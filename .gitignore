@@ -1,0 +1,43 @@
+# ── Dependencias ─────────────────────────────
+node_modules/
+.npm/
+
+# ── Firebase ──────────────────────────────────
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+
+# ── Archivos locales de trabajo ───────────────
+*.skill
+
+# ── Archivos grandes / binarios ───────────────
+*.xlsx
+*.xls
+*.pdf
+*.docx
+*.doc
+*.pptx
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# ── Archivos de sistema ───────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Carpetas de documentos de proceso ─────────
+CX/
+Comercial/
+Finanzas/
+Operaciones/
+Proyectos/
+
+# ── Scripts Python / txt locales ──────────────
+*.py
+*.txt
+
+# ── Excepción: logo del app ───────────────────
+!public/logo.png

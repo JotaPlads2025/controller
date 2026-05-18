@@ -1,0 +1,1106 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recíbelo — Operacional</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--card2:#20243a;--border:#2a2d3e;--text:#e8eaf0;--muted:#6b7280;--muted2:#4b5563;--orange:#FF6B35;--azul:#3b82f6;--verde:#22c55e;--rojo:#ef4444;--amarillo:#f59e0b;--violeta:#8b5cf6;--sidebar:220px}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:"Nunito",sans-serif;background:var(--bg);color:var(--text);min-height:100vh;font-size:14px}
+a{color:inherit;text-decoration:none}
+input,select,textarea,button{font-family:inherit;font-size:14px}
+.app-wrapper{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+header{height:52px;background:var(--card);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 20px;gap:12px;flex-shrink:0;z-index:10}
+header img{height:28px}
+.badge-mod{background:var(--azul);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px}
+.header-right{margin-left:auto;display:flex;align-items:center;gap:12px}
+.user-chip{display:flex;align-items:center;gap:8px;cursor:pointer;padding:4px 10px;border-radius:20px;background:var(--card2)}
+.user-chip:hover{background:var(--border)}
+.user-avatar{width:28px;height:28px;border-radius:50%;background:var(--orange);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
+.app-shell{display:flex;flex:1;overflow:hidden}
+nav.sidebar{width:var(--sidebar);min-width:var(--sidebar);background:var(--card);border-right:1px solid var(--border);padding:16px 0;overflow-y:auto;flex-shrink:0}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;padding:12px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;border-left:3px solid transparent;transition:.15s;font-size:13px;font-weight:600}
+.nav-item:hover{background:var(--card2)}
+.nav-item.active{border-left-color:var(--azul);color:var(--azul);background:rgba(59,130,246,.08)}
+.main-content{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.tab-bar{display:flex;gap:2px;padding:12px 20px 0;border-bottom:1px solid var(--border);background:var(--card);flex-shrink:0;flex-wrap:wrap}
+.tab-btn{padding:8px 14px;border:none;background:transparent;color:var(--muted);cursor:pointer;font-weight:700;font-size:12px;border-bottom:2px solid transparent;margin-bottom:-1px;border-radius:4px 4px 0 0;transition:.15s}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--azul);border-bottom-color:var(--azul)}
+.tab-content{display:none;padding:20px;flex:1}
+.tab-content.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-bottom:20px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px 20px;border-top:3px solid var(--border)}
+.kpi.orange{border-top-color:var(--orange)}.kpi.azul{border-top-color:var(--azul)}.kpi.verde{border-top-color:var(--verde)}.kpi.violeta{border-top-color:var(--violeta)}
+.kpi-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px}
+.kpi-val{font-size:22px;font-weight:800;font-family:"JetBrains Mono",monospace}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.filter-bar{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px;align-items:center}
+.periodo-btn{padding:5px 13px;border:1px solid var(--border);background:transparent;color:var(--muted);border-radius:20px;cursor:pointer;font-size:12px;font-weight:700;transition:.15s}
+.periodo-btn.active,.periodo-btn:hover{background:var(--orange);border-color:var(--orange);color:#fff}
+.filter-bar input,.filter-bar select{background:var(--card);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;outline:none;font-size:13px}
+.filter-bar input:focus,.filter-bar select:focus{border-color:var(--azul)}
+.rango-row{display:none;align-items:center;gap:6px}
+.rango-row.visible{display:flex}
+.tbl-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:auto}
+table{width:100%;border-collapse:collapse}
+thead th{padding:9px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);letter-spacing:.8px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+tbody td{padding:9px 12px;border-bottom:1px solid var(--border);vertical-align:middle}
+tbody tr:last-child td{border-bottom:none}
+tbody tr:hover{background:var(--card2)}
+.monto{text-align:right;font-family:"JetBrains Mono",monospace;font-size:12px}
+.monto.total{font-size:14px;font-weight:800;color:var(--azul)}
+.badge-tipo{display:inline-block;padding:2px 8px;border-radius:20px;font-size:11px;font-weight:700}
+.badge-Fijo{background:rgba(255,107,53,.15);color:var(--orange)}
+.badge-Apoyo{background:rgba(59,130,246,.15);color:var(--azul)}
+.badge-Corporativo{background:rgba(139,92,246,.15);color:var(--violeta)}
+.badge-FlotaXL{background:rgba(34,197,94,.15);color:var(--verde)}
+.badge-FlotaExterna{background:rgba(107,114,128,.15);color:var(--muted)}
+.btn{padding:7px 14px;border:none;border-radius:8px;cursor:pointer;font-weight:700;font-size:13px;transition:.15s}
+.btn-primary{background:var(--orange);color:#fff}.btn-primary:hover{opacity:.85}
+.btn-secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}.btn-secondary:hover{border-color:var(--orange);color:var(--orange)}
+.btn-sm{padding:4px 10px;font-size:12px}
+.btn-danger{background:rgba(239,68,68,.1);color:var(--rojo);border:1px solid rgba(239,68,68,.2)}.btn-danger:hover{background:var(--rojo);color:#fff}
+.btn-verde{background:var(--verde);color:#fff}.btn-verde:hover{opacity:.85}
+.action-bar{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.action-bar h2{font-size:17px;font-weight:800;margin-right:auto}
+.drop-zone{border:2px dashed var(--border);border-radius:12px;padding:36px;text-align:center;cursor:pointer;transition:.2s;background:var(--card)}
+.drop-zone:hover,.drop-zone.drag-over{border-color:var(--orange);background:rgba(255,107,53,.05)}
+.dz-icon{font-size:36px;margin-bottom:10px}
+.drop-zone p{color:var(--muted);font-size:13px;margin-top:4px}
+.upload-list{display:flex;flex-direction:column;gap:8px;margin-top:12px}
+.upload-item{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:11px 14px;display:flex;align-items:center;gap:10px}
+.ui-info{flex:1}.ui-name{font-weight:700;font-size:13px}.ui-meta{font-size:11px;color:var(--muted);margin-top:2px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:14px}
+.form-group label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:4px;letter-spacing:.5px;text-transform:uppercase}
+.form-group input,.form-group select{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:8px;outline:none}
+.form-group input:focus,.form-group select:focus{border-color:var(--azul)}
+.form-section{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:18px;margin-bottom:14px}
+.form-section h3{font-size:13px;font-weight:800;margin-bottom:12px;padding-bottom:8px;border-bottom:1px solid var(--border)}
+.tar-table{width:100%;border-collapse:collapse}
+.tar-table th{padding:7px 8px;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.8px;text-align:center;border-bottom:1px solid var(--border)}
+.tar-table td{padding:5px 6px;border-bottom:1px solid var(--border)}
+.tar-input{width:80px;background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 6px;border-radius:6px;text-align:right;font-family:"JetBrains Mono",monospace;font-size:12px}
+.tar-input:focus{border-color:var(--azul);outline:none}
+.val-section{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:auto;margin-top:12px}
+.val-table{width:100%;border-collapse:collapse}
+.val-table th{padding:8px 12px;font-size:11px;color:var(--muted);font-weight:700;text-transform:uppercase;border-bottom:1px solid var(--border)}
+.val-table td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.val-table tr:last-child td{border-bottom:none}
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);display:none;align-items:center;justify-content:center;z-index:1000}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--card);border:1px solid var(--border);border-radius:16px;width:680px;max-width:95vw;max-height:90vh;overflow:auto}
+.modal-header{padding:18px 22px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.modal-header h3{font-size:15px;font-weight:800}
+.modal-body{padding:18px 22px}
+.modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
+.close-btn{background:none;border:none;cursor:pointer;color:var(--muted);font-size:20px;line-height:1}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 20px;font-weight:700;font-size:13px;transition:.3s;z-index:2000;opacity:0;pointer-events:none}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#toast.ok{border-color:var(--verde);color:var(--verde)}
+#toast.err{border-color:var(--rojo);color:var(--rojo)}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:999;gap:14px}
+#loading img{height:56px}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#login-screen{position:fixed;inset:0;background:var(--bg);display:none;align-items:center;justify-content:center;z-index:998}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:36px;width:360px;text-align:center}
+.login-card img{height:50px;margin:0 auto 20px;display:block}
+.login-card h2{font-size:19px;font-weight:800;margin-bottom:6px}
+.login-card p{color:var(--muted);font-size:13px;margin-bottom:24px}
+.login-btn{width:100%;padding:11px;border:1px solid var(--border);background:var(--card2);color:var(--text);border-radius:10px;cursor:pointer;font-weight:700;font-size:13px;margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:10px;transition:.15s}
+.login-btn:hover{border-color:var(--orange);color:var(--orange)}
+#login-error{color:var(--rojo);font-size:12px;margin-top:10px;min-height:16px}
+.empty-state{text-align:center;padding:32px;color:var(--muted)}
+.empty-state .icon{font-size:36px;margin-bottom:10px}
+.hidden{display:none!important}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <img src="/logo.png" alt="Recibelo">
+  <div class="spinner"></div>
+</div>
+
+<div id="login-screen">
+  <div class="login-card">
+    <img src="/logo.png" alt="Recibelo">
+    <h2>Operacional</h2>
+    <p>Liquidación de conductores Recíbelo</p>
+    <button class="login-btn" onclick="signInWithMicrosoft()">🏢 Ingresar con Microsoft</button>
+    <button class="login-btn" onclick="signInWithGoogle()">🔵 Ingresar con Google</button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" class="app-wrapper" style="display:none">
+  <header>
+    <img src="/logo.png" alt="Recibelo">
+    <span class="badge-mod">Operacional</span>
+    <div class="header-right">
+      <div class="user-chip" onclick="doSignOut()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span id="user-name"></span>
+        <span style="font-size:11px;color:var(--muted)">salir</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="nav-section">Módulos</div>
+      <a id="nav-controller" href="/" class="nav-item">📋 <span>Controller</span></a>
+      <a id="nav-asistencia" href="/asistencia_ruta" class="nav-item">🚚 <span>Asistencia Ruta</span></a>
+      <a id="nav-finanzas" href="/finanzas" class="nav-item" style="display:none">💰 <span>Finanzas</span></a>
+      <a href="/operacional" class="nav-item active">⚙️ <span>Operacional</span></a>
+    </nav>
+
+    <div class="main-content">
+      <div class="tab-bar">
+        <button class="tab-btn active" onclick="switchTab(this,'resumen')">📊 Resumen</button>
+        <button class="tab-btn" onclick="switchTab(this,'paqueteria')">📦 Paquetería</button>
+        <button class="tab-btn" onclick="switchTab(this,'pm')">🚚 Primera Milla</button>
+        <button class="tab-btn" onclick="switchTab(this,'bonos')">⭐ Bonos</button>
+        <button class="tab-btn" onclick="switchTab(this,'tarifas')">💲 Tarifas</button>
+        <button class="tab-btn" onclick="switchTab(this,'admin')">⚙️ Admin</button>
+      </div>
+
+      <!-- RESUMEN -->
+      <div id="tab-resumen" class="tab-content active">
+        <div class="filter-bar">
+          <button class="periodo-btn" data-p="hoy" onclick="setPeriodo(this)">Hoy</button>
+          <button class="periodo-btn" data-p="semana" onclick="setPeriodo(this)">Esta semana</button>
+          <button class="periodo-btn active" data-p="mes" onclick="setPeriodo(this)">Este mes</button>
+          <button class="periodo-btn" data-p="mes_ant" onclick="setPeriodo(this)">Mes pasado</button>
+          <button class="periodo-btn" data-p="todo" onclick="setPeriodo(this)">Todo</button>
+          <button class="periodo-btn" data-p="rango" onclick="setPeriodo(this)">Rango</button>
+          <div class="rango-row" id="rango-row">
+            <input type="date" id="fecha-desde" onchange="applyFilter()">
+            <span style="color:var(--muted)">→</span>
+            <input type="date" id="fecha-hasta" onchange="applyFilter()">
+          </div>
+          <select id="filtro-tipo" onchange="applyFilter()">
+            <option value="">Todos los tipos</option>
+            <option>Fijo</option><option>Apoyo</option>
+            <option>Corporativo</option><option>Flota XL</option><option>Flota Externa</option>
+          </select>
+          <input type="text" id="filtro-nombre" placeholder="Buscar conductor..." oninput="applyFilter()" style="min-width:170px">
+        </div>
+        <div class="kpi-grid">
+          <div class="kpi orange"><div class="kpi-label">Total Liquidado</div><div class="kpi-val" id="kpi-total">$0</div><div class="kpi-sub" id="kpi-cond">0 conductores</div></div>
+          <div class="kpi azul"><div class="kpi-label">Paquetería</div><div class="kpi-val" id="kpi-paq">$0</div><div class="kpi-sub" id="kpi-pkts">0 paquetes</div></div>
+          <div class="kpi verde"><div class="kpi-label">Primera Milla</div><div class="kpi-val" id="kpi-pm">$0</div><div class="kpi-sub" id="kpi-pmr">0 retiros</div></div>
+          <div class="kpi violeta"><div class="kpi-label">Bonos</div><div class="kpi-val" id="kpi-bon">$0</div><div class="kpi-sub" id="kpi-bonn">0 bonos</div></div>
+        </div>
+        <!-- BALANCE PANEL -->
+        <div id="balance-panel" style="display:none;margin-bottom:24px">
+          <h3 style="font-size:14px;font-weight:700;color:var(--muted);letter-spacing:.05em;margin-bottom:12px">BALANCE POR TIPO</h3>
+          <div id="balance-cards" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:20px"></div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:12px">DISTRIBUCIÓN TOTAL</div>
+              <div style="position:relative;height:200px"><canvas id="chart-donut"></canvas></div>
+            </div>
+            <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px">
+              <div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:12px">PAQ · PM · BONOS POR TIPO</div>
+              <div style="position:relative;height:200px"><canvas id="chart-barras"></canvas></div>
+            </div>
+          </div>
+        </div>
+        <div class="action-bar">
+          <h2>Conductores</h2>
+          <button class="btn btn-secondary btn-sm" onclick="exportExcel()">⬇ Excel</button>
+          <button class="btn btn-secondary btn-sm" onclick="descargarZipResumen()">📦 ZIP PDFs</button>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>Conductor</th><th>Tipo</th>
+              <th class="monto">Paquetería</th><th class="monto">Pkts</th>
+              <th class="monto">1ra Milla</th><th class="monto">Bonos</th>
+              <th class="monto">Total</th><th></th>
+            </tr></thead>
+            <tbody id="tbody-resumen">
+              <tr><td colspan="8"><div class="empty-state"><div class="icon">📊</div>Carga datos para comenzar</div></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- PAQUETERÍA -->
+      <div id="tab-paqueteria" class="tab-content">
+        <div class="action-bar"><h2>Paquetería</h2></div>
+        <div id="paq-upload" class="drop-zone"
+             onclick="document.getElementById('paq-file').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="this.classList.remove('drag-over');handleDropPaq(event)">
+          <div class="dz-icon">📦</div>
+          <p><strong>Arrastra el Excel de paquetería aquí</strong></p>
+          <p>o haz clic para seleccionar</p>
+        </div>
+        <input type="file" id="paq-file" accept=".xlsx,.xls" class="hidden" onchange="handleFilePaq(this.files[0])">
+        <div id="paq-preview" class="hidden">
+          <div class="form-section" style="margin-top:14px">
+            <h3 id="paq-preview-title">Vista previa</h3>
+            <div id="paq-preview-body"></div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="guardarPaq()">💾 Guardar en Firebase</button>
+              <button class="btn btn-secondary" onclick="cancelarPaq()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div class="action-bar" style="margin-top:18px"><h2 style="font-size:15px">Archivos subidos</h2></div>
+        <div id="paq-uploads-list" class="upload-list">
+          <div class="empty-state" style="padding:16px"><div class="icon">📂</div>Sin archivos aún</div>
+        </div>
+      </div>
+
+      <!-- PRIMERA MILLA -->
+      <div id="tab-pm" class="tab-content">
+        <div class="action-bar"><h2>Primera Milla</h2></div>
+        <div id="pm-upload" class="drop-zone"
+             onclick="document.getElementById('pm-file').click()"
+             ondragover="event.preventDefault();this.classList.add('drag-over')"
+             ondragleave="this.classList.remove('drag-over')"
+             ondrop="this.classList.remove('drag-over');handleDropPM(event)">
+          <div class="dz-icon">🚚</div>
+          <p><strong>Arrastra el Excel de Primera Milla aquí</strong></p>
+          <p>Columnas: A=Fecha · B=Cliente · C=Conductor · D=Tarifa</p>
+        </div>
+        <input type="file" id="pm-file" accept=".xlsx,.xls" class="hidden" onchange="handleFilePM(this.files[0])">
+        <div id="pm-validation" class="hidden">
+          <div class="form-section" style="margin-top:14px">
+            <h3>Validación de conductores</h3>
+            <p style="color:var(--muted);font-size:12px;margin-bottom:10px">Verifica y asigna cada conductor antes de guardar. ⚠️ No identificado · ✅ Conocido · 🔖 Memorizado</p>
+            <div class="val-section">
+              <table class="val-table">
+                <thead><tr><th></th><th>Conductor en Excel</th><th>Nombre asignado</th><th>Tipo</th></tr></thead>
+                <tbody id="pm-val-tbody"></tbody>
+              </table>
+            </div>
+            <div style="margin-top:12px;display:flex;gap:8px">
+              <button class="btn btn-primary" onclick="confirmarPM()">✅ Confirmar y guardar</button>
+              <button class="btn btn-secondary" onclick="cancelarPM()">Cancelar</button>
+            </div>
+          </div>
+        </div>
+        <div class="action-bar" style="margin-top:18px"><h2 style="font-size:15px">Archivos subidos</h2></div>
+        <div id="pm-uploads-list" class="upload-list">
+          <div class="empty-state" style="padding:16px"><div class="icon">📂</div>Sin archivos aún</div>
+        </div>
+      </div>
+
+      <!-- BONOS -->
+      <div id="tab-bonos" class="tab-content">
+        <div class="action-bar"><h2>Bonos</h2></div>
+        <div class="form-section">
+          <h3>Agregar bono</h3>
+          <div class="form-grid">
+            <div class="form-group"><label>Conductor</label><input type="text" id="bon-chofer" placeholder="Nombre" list="conductores-dl"></div>
+            <div class="form-group"><label>Monto ($)</label><input type="number" id="bon-monto" placeholder="50000"></div>
+            <div class="form-group"><label>Fecha</label><input type="date" id="bon-fecha"></div>
+            <div class="form-group"><label>Motivo</label><input type="text" id="bon-motivo" placeholder="Bono productividad..."></div>
+          </div>
+          <button class="btn btn-primary" onclick="guardarBono()">⭐ Agregar bono</button>
+        </div>
+        <div class="action-bar" style="margin-top:4px">
+          <h2 style="font-size:15px">Historial</h2>
+          <input type="date" id="bon-desde" onchange="renderBonos()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:8px">
+          <input type="date" id="bon-hasta" onchange="renderBonos()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 8px;border-radius:8px">
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr><th>Conductor</th><th>Motivo</th><th>Fecha</th><th class="monto">Monto</th><th></th></tr></thead>
+            <tbody id="tbody-bonos"><tr><td colspan="5"><div class="empty-state"><div class="icon">⭐</div>Sin bonos</div></td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- TARIFAS -->
+      <div id="tab-tarifas" class="tab-content">
+        <div class="action-bar">
+          <h2>Tarifas por Comuna</h2>
+          <button class="btn btn-secondary btn-sm" onclick="agregarComuna()">+ Agregar</button>
+          <button class="btn btn-primary btn-sm" onclick="guardarTarifas()">💾 Guardar todo</button>
+        </div>
+        <div class="form-section">
+          <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Tarifas en pesos CLP. Edita los valores y haz clic en "Guardar todo".</p>
+          <table class="tar-table" id="tar-table">
+            <thead><tr>
+              <th style="text-align:left;padding-left:8px">Comuna</th>
+              <th>Zona</th>
+              <th>Auto L-V</th><th>Auto Sáb</th><th>Auto Dom</th>
+              <th>Moto L-V</th><th>Moto Sáb</th><th>Moto Dom</th>
+              <th></th>
+            </tr></thead>
+            <tbody id="tar-tbody"><tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">Sin tarifas. Carga el archivo sync para comenzar.</td></tr></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- ADMIN -->
+      <div id="tab-admin" class="tab-content">
+        <div class="action-bar"><h2>Administración</h2></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-section">
+            <h3>Conductores</h3>
+            <div class="form-grid" style="grid-template-columns:1fr 1fr">
+              <div class="form-group"><label>Nombre</label><input type="text" id="cond-nombre" placeholder="Nombre completo"></div>
+              <div class="form-group"><label>Tipo</label>
+                <select id="cond-tipo">
+                  <option>Fijo</option><option>Apoyo</option>
+                  <option>Corporativo</option><option>Flota XL</option><option>Flota Externa</option>
+                </select>
+              </div>
+            </div>
+            <button class="btn btn-primary btn-sm" onclick="guardarConductor()" style="margin-bottom:12px">+ Agregar</button>
+            <div id="admin-conductores" style="max-height:280px;overflow-y:auto"></div>
+          </div>
+          <div class="form-section">
+            <h3>Feriados</h3>
+            <div style="display:flex;gap:8px;margin-bottom:12px">
+              <input type="date" id="fer-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:8px;outline:none">
+              <button class="btn btn-primary btn-sm" onclick="guardarFeriado()">+ Agregar</button>
+            </div>
+            <div id="admin-feriados" style="max-height:280px;overflow-y:auto"></div>
+          </div>
+        </div>
+        <div class="form-section" style="margin-top:14px">
+          <h3>📅 Cerrar Mes</h3>
+          <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Genera el reporte Excel del mes, guarda un snapshot en Firebase y ofrece purgar los datos del período para liberar espacio.</p>
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
+            <div class="form-group" style="margin:0">
+              <label>Período</label>
+              <input type="month" id="cerrar-periodo" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;outline:none">
+            </div>
+            <button class="btn btn-verde" onclick="cerrarMes()">📥 Generar reporte y cerrar</button>
+          </div>
+          <div id="liquidaciones-list" style="margin-top:14px"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL PDF -->
+<div id="modal-pdf" class="modal-overlay">
+  <div class="modal-box">
+    <div class="modal-header">
+      <h3 id="pdf-titulo">Liquidación</h3>
+      <button class="close-btn" onclick="document.getElementById('modal-pdf').classList.remove('open')">✕</button>
+    </div>
+    <div class="modal-body" id="pdf-body"></div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="copiarWsp()">📋 Copiar WhatsApp</button>
+      <button class="btn btn-primary" onclick="generarPDF()">⬇ Descargar PDF</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<datalist id="conductores-dl"></datalist>
+
+<script type="module">
+import { db, nk, fmt, fmtD, setupAuth } from "/shared/auth.js";
+import { collection, getDocs, getDoc, doc, setDoc, addDoc, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── GLOBALS ─────────────────────────────────────────────────
+let CU = null;
+let TARIFAS     = {};
+let CONDUCTORES = {};
+let FERIADOS    = new Set();
+let BONOS       = [];
+let PAQ_UPS     = [];
+let PM_UPS      = [];
+let PAQ_CACHE   = {};
+let PM_CACHE    = {};
+let PM_FLOTAS   = {};
+let LIQUIDACIONES = [];
+let paqPend = null, pmPend = null, pdfActual = null;
+let _filas  = [];
+const EXCL = ["turbo","js","rebajas","phero kenneth meier","rural 12 horas","bodega externa"];
+const ND_C = ["lo barnechea","la pintana","san bernardo","puente alto"];
+
+// nk(), fmt(), fmtD() importadas desde /shared/auth.js
+function toast(msg,t=""){
+  const el=document.getElementById("toast");
+  el.textContent=msg; el.className="show "+(t||"");
+  clearTimeout(el._t); el._t=setTimeout(()=>el.className="",3500);
+}
+
+
+
+// ── LOAD ────────────────────────────────────────────────────
+async function loadAll(){
+  const [tarSn,condSn,ferSn,bonSn,upSn,flotSn,liqSn]=await Promise.all([
+    getDocs(collection(db,"fin_tarifas")),
+    getDocs(collection(db,"fin_conductores")),
+    getDocs(collection(db,"fin_feriados")),
+    getDocs(collection(db,"fin_bonos")),
+    getDocs(collection(db,"fin_uploads")),
+    getDocs(collection(db,"fin_pm_flotas")),
+    getDocs(collection(db,"fin_liquidaciones"))
+  ]);
+  TARIFAS={};tarSn.forEach(d=>TARIFAS[d.id]=d.data());
+  CONDUCTORES={};condSn.forEach(d=>CONDUCTORES[d.id]=d.data());
+  FERIADOS=new Set();ferSn.forEach(d=>FERIADOS.add(d.id));
+  BONOS=bonSn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.fecha?.localeCompare(a.fecha||""));
+  PAQ_UPS=[];PM_UPS=[];
+  upSn.forEach(d=>{const u={id:d.id,...d.data()};u.tipo==="paqueteria"?PAQ_UPS.push(u):PM_UPS.push(u);});
+  PAQ_UPS.sort((a,b)=>b.upload_fecha?.localeCompare(a.upload_fecha||""));
+  PM_UPS.sort((a,b)=>b.upload_fecha?.localeCompare(a.upload_fecha||""));
+  PM_FLOTAS={};flotSn.forEach(d=>PM_FLOTAS[d.id]=d.data());
+  LIQUIDACIONES=liqSn.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>b.id.localeCompare(a.id));
+  // Pre-load last 3 months of paq+pm
+  for(const u of PAQ_UPS.slice(0,3)){const s=await getDoc(doc(db,"fin_paquetes",u.id));if(s.exists())PAQ_CACHE[u.id]=s.data();}
+  for(const u of PM_UPS.slice(0,3)){const s=await getDoc(doc(db,"fin_pm",u.id));if(s.exists())PM_CACHE[u.id]=s.data();}
+  refrescaDatalist(); renderUploads(); renderBonos(); renderTarifas(); renderAdminConductores(); renderFeriados(); renderLiquidaciones();
+}
+
+function refrescaDatalist(){
+  // Merge conductors from fin_conductores + paquetería + primera milla
+  const nombres = new Map();
+  Object.values(CONDUCTORES).forEach(c=>nombres.set(nk(c.nombre),c.nombre));
+  Object.values(PAQ_CACHE).forEach(u=>{
+    if(!u?.conductores)return;
+    Object.values(u.conductores).forEach(c=>{if(c.nombre)nombres.set(nk(c.nombre),c.nombre);});
+  });
+  Object.values(PM_CACHE).forEach(u=>{
+    if(!u?.datos)return;
+    u.datos.forEach(r=>{if(r.conductor)nombres.set(nk(r.conductor),r.conductor);});
+  });
+  // También incluir conductores de flotas memorizadas (PM_FLOTAS)
+  Object.values(PM_FLOTAS).forEach(f=>{if(f.conductor_raw)nombres.set(nk(f.conductor_raw),f.conductor_raw);});
+  document.getElementById("conductores-dl").innerHTML=[...nombres.values()].sort().map(n=>`<option value="${n}">`).join("");
+}
+
+// ── FILTER / RESUMEN ────────────────────────────────────────
+function getRange(){
+  const p=document.querySelector(".periodo-btn.active")?.dataset.p||"mes";
+  const hoy=new Date(),hs=hoy.toISOString().slice(0,10);
+  if(p==="hoy") return{desde:hs,hasta:hs};
+  if(p==="semana"){const d=new Date(hoy),day=d.getDay()||7;d.setDate(d.getDate()-day+1);return{desde:d.toISOString().slice(0,10),hasta:hs};}
+  if(p==="mes") return{desde:`${hoy.getFullYear()}-${String(hoy.getMonth()+1).padStart(2,"0")}-01`,hasta:hs};
+  if(p==="mes_ant"){const d=new Date(hoy.getFullYear(),hoy.getMonth()-1,1);const h=new Date(hoy.getFullYear(),hoy.getMonth(),0);return{desde:d.toISOString().slice(0,10),hasta:h.toISOString().slice(0,10)};}
+  if(p==="todo") return{desde:"2020-01-01",hasta:"2099-12-31"};
+  return{desde:document.getElementById("fecha-desde").value||"2020-01-01",hasta:document.getElementById("fecha-hasta").value||"2099-12-31"};
+}
+window.setPeriodo=function(btn){
+  document.querySelectorAll(".periodo-btn").forEach(b=>b.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("rango-row").classList.toggle("visible",btn.dataset.p==="rango");
+  applyFilter();
+};
+let _chartDonut=null,_chartBarras=null;
+const TIPO_COLORS={
+  "Fijo":"#f97316","Apoyo":"#3b82f6","Corporativo":"#8b5cf6",
+  "Flota XL":"#10b981","Flota Externa":"#ec4899"
+};
+function renderBalance(filas){
+  if(!filas.length){document.getElementById("balance-panel").style.display="none";return;}
+  document.getElementById("balance-panel").style.display="block";
+  // Agrupar por tipo
+  const tipoNorm=(s)=>{
+    const t=(s||"").trim();
+    if(!t||t.toLowerCase()==="fijo")return"Fijo";
+    if(t.toLowerCase()==="apoyo")return"Apoyo";
+    if(t.toLowerCase()==="corporativo")return"Corporativo";
+    if(t.toLowerCase().includes("xl"))return"Flota XL";
+    if(t.toLowerCase().includes("extern"))return"Flota Externa";
+    return"Fijo";
+  };
+  const tipos={};
+  filas.forEach(f=>{
+    const t=tipoNorm(f.tipo);
+    if(!tipos[t])tipos[t]={label:t,paq:0,pm:0,bon:0,total:0,cond:0};
+    tipos[t].paq+=f.paq;tipos[t].pm+=f.pm;tipos[t].bon+=f.bon;tipos[t].total+=f.total;tipos[t].cond++;
+  });
+  const orden=["Fijo","Apoyo","Corporativo","Flota XL","Flota Externa"];
+  const grupos=orden.filter(t=>tipos[t]).map(t=>tipos[t]);
+  // Cards por tipo
+  document.getElementById("balance-cards").innerHTML=grupos.map(g=>`
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px;border-top:3px solid ${TIPO_COLORS[g.label]||"#666"}">
+      <div style="font-size:10px;font-weight:700;color:var(--muted);margin-bottom:6px">${g.label.toUpperCase()} · ${g.cond} conductores</div>
+      <div style="font-size:18px;font-weight:800;margin-bottom:4px">$${fmt(g.total)}</div>
+      <div style="font-size:10px;color:var(--muted)">📦 $${fmt(g.paq)} &nbsp;🚚 $${fmt(g.pm)}&nbsp;${g.bon>0?` ⭐ $${fmt(g.bon)}`:""}</div>
+    </div>`).join("");
+  // Donut chart
+  const dCtx=document.getElementById("chart-donut").getContext("2d");
+  if(_chartDonut)_chartDonut.destroy();
+  _chartDonut=new Chart(dCtx,{type:"doughnut",data:{
+    labels:grupos.map(g=>g.label),
+    datasets:[{data:grupos.map(g=>g.total),backgroundColor:grupos.map(g=>TIPO_COLORS[g.label]||"#666"),borderWidth:0}]
+  },options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#aaa",font:{size:11},boxWidth:12}}},cutout:"65%"}});
+  // Barras chart
+  const bCtx=document.getElementById("chart-barras").getContext("2d");
+  if(_chartBarras)_chartBarras.destroy();
+  _chartBarras=new Chart(bCtx,{type:"bar",data:{
+    labels:grupos.map(g=>g.label),
+    datasets:[
+      {label:"Paquetería",data:grupos.map(g=>g.paq),backgroundColor:"#f97316",borderRadius:4},
+      {label:"Primera Milla",data:grupos.map(g=>g.pm),backgroundColor:"#3b82f6",borderRadius:4},
+      {label:"Bonos",data:grupos.map(g=>g.bon),backgroundColor:"#8b5cf6",borderRadius:4}
+    ]
+  },options:{maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{color:"#aaa",font:{size:11},boxWidth:12}}},
+    scales:{x:{stacked:true,ticks:{color:"#888",font:{size:10}},grid:{display:false}},
+            y:{stacked:true,ticks:{color:"#888",font:{size:10},callback:v=>v>=1000000?"$"+(v/1000000).toFixed(1)+"M":v>=1000?"$"+(v/1000).toFixed(0)+"k":"$"+v},grid:{color:"rgba(255,255,255,.05)"}}}
+  }});
+}
+window.applyFilter=async function(){
+  const{desde,hasta}=getRange();
+  const paqEn=PAQ_UPS.filter(u=>u.fecha_inicio<=hasta&&(u.fecha_max||u.fecha_inicio)>=desde);
+  const pmEn=PM_UPS.filter(u=>u.fecha_inicio<=hasta&&(u.fecha_max||u.fecha_inicio)>=desde);
+  let cacheUpdated=false;
+  for(const u of paqEn){if(!PAQ_CACHE[u.id]){const s=await getDoc(doc(db,"fin_paquetes",u.id));if(s.exists()){PAQ_CACHE[u.id]=s.data();cacheUpdated=true;}}}
+  for(const u of pmEn){if(!PM_CACHE[u.id]){const s=await getDoc(doc(db,"fin_pm",u.id));if(s.exists())PM_CACHE[u.id]=s.data();}}
+  if(cacheUpdated)refrescaDatalist();
+  const agg={};
+  for(const u of paqEn){const d=PAQ_CACHE[u.id];if(!d?.conductores)continue;for(const[k,c]of Object.entries(d.conductores)){if(!agg[k])agg[k]={nombre:c.nombre,tipo:c.tipo||"Fijo",paq:0,pkts:0,pm:0,bon:0,dias:{}};agg[k].paq+=c.total||0;agg[k].pkts+=c.cant||0;if(c.dias){for(const[fd,dv]of Object.entries(c.dias)){if(!agg[k].dias[fd])agg[k].dias[fd]={cant:0,valor:0};agg[k].dias[fd].cant+=dv.cant||0;agg[k].dias[fd].valor+=dv.valor||0;}}}}
+  for(const u of pmEn){const d=PM_CACHE[u.id];if(!d?.datos)continue;for(const r of d.datos){if(r.fecha<desde||r.fecha>hasta)continue;const k=nk(r.conductor);const tpm=r.tipo_flota||"Fijo";if(!agg[k])agg[k]={nombre:r.conductor,tipo:tpm,paq:0,pkts:0,pm:0,bon:0};else if(tpm!=="Fijo"&&agg[k].tipo==="Fijo")agg[k].tipo=tpm;agg[k].pm+=r.tarifa||0;}}
+  for(const b of BONOS){if(b.fecha<desde||b.fecha>hasta)continue;const k=nk(b.chofer);if(!agg[k])agg[k]={nombre:b.chofer,tipo:"Fijo",paq:0,pkts:0,pm:0,bon:0};agg[k].bon+=b.monto||0;}
+  const ft=document.getElementById("filtro-tipo").value;
+  const fn=document.getElementById("filtro-nombre").value.toLowerCase();
+  let filas=Object.entries(agg).map(([k,d])=>({key:k,...d,total:d.paq+d.pm+d.bon}));
+  if(ft) filas=filas.filter(f=>f.tipo===ft);
+  if(fn) filas=filas.filter(f=>f.nombre.toLowerCase().includes(fn));
+  filas.sort((a,b)=>b.total-a.total);
+  _filas=filas;
+  renderBalance(filas);
+  const tp=filas.reduce((a,f)=>a+f.paq,0),tpk=filas.reduce((a,f)=>a+f.pkts,0),
+        tpm=filas.reduce((a,f)=>a+f.pm,0),tbon=filas.reduce((a,f)=>a+f.bon,0),
+        tot=filas.reduce((a,f)=>a+f.total,0),bonn=BONOS.filter(b=>b.fecha>=desde&&b.fecha<=hasta);
+  document.getElementById("kpi-total").textContent="$"+fmt(tot);
+  document.getElementById("kpi-cond").textContent=filas.length+" conductores";
+  document.getElementById("kpi-paq").textContent="$"+fmt(tp);
+  document.getElementById("kpi-pkts").textContent=fmt(tpk)+" paquetes";
+  document.getElementById("kpi-pm").textContent="$"+fmt(tpm);
+  document.getElementById("kpi-pmr").textContent="";
+  document.getElementById("kpi-bon").textContent="$"+fmt(tbon);
+  document.getElementById("kpi-bonn").textContent=bonn.length+" bonos";
+  const tbody=document.getElementById("tbody-resumen");
+  if(!filas.length){tbody.innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="icon">📊</div>Sin datos para el período</div></td></tr>`;return;}
+  tbody.innerHTML=filas.map(f=>{
+    const badge=f.tipo.replace(" ","");
+    return `<tr>
+      <td style="font-weight:700">${f.nombre}</td>
+      <td><span class="badge-tipo badge-${badge}">${f.tipo}</span></td>
+      <td class="monto">${f.paq>0?"$"+fmt(f.paq):"—"}</td>
+      <td class="monto">${f.pkts>0?fmt(f.pkts):"—"}</td>
+      <td class="monto">${f.pm>0?"$"+fmt(f.pm):"—"}</td>
+      <td class="monto">${f.bon>0?"$"+fmt(f.bon):"—"}</td>
+      <td class="monto total">$${fmt(f.total)}</td>
+      <td><button class="btn btn-secondary btn-sm" onclick="abrirPDF('${f.key}')">PDF</button></td>
+    </tr>`;}).join("");
+};
+
+// ── PDF ─────────────────────────────────────────────────────
+window.abrirPDF=function(key){
+  const f=_filas.find(x=>x.key===key);if(!f)return;
+  pdfActual=f;
+  const{desde,hasta}=getRange();
+  document.getElementById("pdf-titulo").textContent="Liquidación — "+f.nombre;
+  const bonos=BONOS.filter(b=>nk(b.chofer)===key&&b.fecha>=desde&&b.fecha<=hasta);
+  document.getElementById("pdf-body").innerHTML=`
+    <p style="color:var(--muted);font-size:12px;margin-bottom:14px">Período: ${fmtD(desde)} al ${fmtD(hasta)}</p>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:16px">
+      <div style="background:var(--card2);padding:12px;border-radius:8px"><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:4px">PAQUETERÍA</div><div style="font-size:20px;font-weight:800">$${fmt(f.paq)}</div><div style="color:var(--muted);font-size:11px">${fmt(f.pkts)} paquetes</div></div>
+      <div style="background:var(--card2);padding:12px;border-radius:8px"><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:4px">PRIMERA MILLA</div><div style="font-size:20px;font-weight:800">$${fmt(f.pm)}</div></div>
+      <div style="background:var(--card2);padding:12px;border-radius:8px"><div style="font-size:10px;color:var(--muted);font-weight:700;margin-bottom:4px">BONOS</div><div style="font-size:20px;font-weight:800">$${fmt(f.bon)}</div>${bonos.length?`<div style="color:var(--muted);font-size:11px">${bonos.map(b=>b.motivo).join(", ")}</div>`:""}</div>
+      <div style="background:rgba(59,130,246,.1);border:1px solid var(--azul);padding:12px;border-radius:8px"><div style="font-size:10px;color:var(--azul);font-weight:700;margin-bottom:4px">TOTAL</div><div style="font-size:22px;font-weight:800;color:var(--azul)">$${fmt(f.total)}</div></div>
+    </div>`;
+  document.getElementById("modal-pdf").classList.add("open");
+};
+function makePDF(f,desde,hasta){
+  const{jsPDF}=window.jspdf, pdf=new jsPDF({unit:"mm",format:"a4"});
+  pdf.setFont("helvetica","bold"); pdf.setFontSize(16); pdf.text("LIQUIDACION CONDUCTOR",20,20);
+  pdf.setFont("helvetica","normal"); pdf.setFontSize(10); pdf.setTextColor(120,120,120);
+  pdf.text("Recibelo.cl",20,27); pdf.text(`Periodo: ${fmtD(desde)} al ${fmtD(hasta)}`,20,33); pdf.text(`Conductor: ${f.nombre}  |  Tipo: ${f.tipo}`,20,39);
+  pdf.setTextColor(30,30,30); pdf.setDrawColor(200,200,200); pdf.line(20,43,190,43);
+  let y=51;
+  const row=(l,v,b=false)=>{pdf.setFont("helvetica",b?"bold":"normal");pdf.setFontSize(11);pdf.text(l,25,y);pdf.text("$"+fmt(v),180,y,{align:"right"});y+=7;};
+  pdf.setFont("helvetica","bold");pdf.setFontSize(12);pdf.text("PAQUETERIA",20,y);y+=7;
+  row("Paquetes entregados: "+fmt(f.pkts)+"  →  Subtotal",f.paq,true);
+  if(f.dias&&Object.keys(f.dias).length>0){
+    y+=5;
+    pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.setTextColor(100,100,100);
+    pdf.text("FECHA",25,y);pdf.text("PKTS",115,y,{align:"right"});pdf.text("SUBTOTAL",175,y,{align:"right"});
+    y+=4;pdf.setDrawColor(220,220,220);pdf.line(25,y,175,y);y+=5;
+    pdf.setFont("helvetica","normal");pdf.setFontSize(10);pdf.setTextColor(30,30,30);
+    const dias=Object.keys(f.dias).sort();
+    for(const d of dias){
+      const di=f.dias[d];
+      const dFmt=new Date(d+"T12:00:00").toLocaleDateString("es-CL",{weekday:"short",day:"numeric",month:"short"});
+      pdf.text(dFmt,25,y);pdf.text(String(di.cant),115,y,{align:"right"});pdf.text("$"+fmt(di.valor),175,y,{align:"right"});
+      y+=5;
+      if(y>268){pdf.addPage();y=20;}
+    }
+    y+=3;
+  }else{y+=4;}
+  pdf.line(20,y,190,y);y+=7;
+  pdf.setFont("helvetica","bold");pdf.text("PRIMERA MILLA",20,y);y+=7;
+  row("Retiros  →  Subtotal",f.pm,true);y+=4;pdf.line(20,y,190,y);y+=7;
+  if(f.bon>0){pdf.setFont("helvetica","bold");pdf.text("BONOS",20,y);y+=7;row("Subtotal bonos",f.bon,true);y+=4;pdf.line(20,y,190,y);y+=7;}
+  pdf.setFillColor(59,130,246);pdf.rect(20,y,170,13,"F");
+  pdf.setTextColor(255,255,255);pdf.setFont("helvetica","bold");pdf.setFontSize(13);
+  pdf.text("TOTAL LIQUIDACION",25,y+9);pdf.text("$"+fmt(f.total),185,y+9,{align:"right"});
+  pdf.setTextColor(140,140,140);pdf.setFont("helvetica","normal");pdf.setFontSize(9);
+  pdf.text(`Generado ${new Date().toLocaleDateString("es-CL")} — ${CU?.email||""}`,20,y+22);
+  return pdf;
+}
+window.generarPDF=function(){
+  if(!pdfActual)return;
+  const{desde,hasta}=getRange();
+  const pdf=makePDF(pdfActual,desde,hasta);
+  pdf.save(`Liquidacion_${pdfActual.nombre.replace(/\s+/g,"_")}_${desde}_${hasta}.pdf`);
+  toast("PDF descargado","ok");
+};
+window.copiarWsp=function(){
+  if(!pdfActual)return;
+  const f=pdfActual,{desde,hasta}=getRange();
+  const t=`*Liquidación Recíbelo*\n${f.nombre}\nPeríodo: ${fmtD(desde)} al ${fmtD(hasta)}\n\n📦 Paquetería: $${fmt(f.paq)} (${fmt(f.pkts)} pkts)\n🚚 Primera Milla: $${fmt(f.pm)}\n⭐ Bonos: $${fmt(f.bon)}\n\n*TOTAL: $${fmt(f.total)}*`;
+  navigator.clipboard.writeText(t).then(()=>toast("Copiado al portapapeles","ok"));
+};
+window.descargarZipResumen=async function(){
+  const fl=_filas.filter(f=>f.total>0);if(!fl.length){toast("Sin datos","err");return;}
+  toast("Generando ZIP...");
+  const zip=new JSZip(),{desde,hasta}=getRange();
+  for(const f of fl){const pdf=makePDF(f,desde,hasta);zip.file(`${f.nombre.replace(/\s+/g,"_")}.pdf`,pdf.output("arraybuffer"));}
+  const blob=await zip.generateAsync({type:"blob"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=`Liquidaciones_${desde}_${hasta}.zip`;a.click();
+  toast("ZIP descargado","ok");
+};
+window.exportExcel=function(){
+  if(!_filas.length){toast("Sin datos","err");return;}
+  const{desde,hasta}=getRange(),wb=XLSX.utils.book_new();
+  const data=[["Conductor","Tipo","Paquetería","Paquetes","Primera Milla","Bonos","Total"]];
+  _filas.forEach(f=>data.push([f.nombre,f.tipo,f.paq,f.pkts,f.pm,f.bon,f.total]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),"Resumen");
+  XLSX.writeFile(wb,`Resumen_Operacional_${desde}_${hasta}.xlsx`);
+  toast("Excel exportado","ok");
+};
+
+// ── PAQUETERÍA ──────────────────────────────────────────────
+window.handleDropPaq=function(ev){ev.preventDefault();const f=ev.dataTransfer.files[0];if(f)handleFilePaq(f);};
+window.handleFilePaq=function(file){
+  if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+    let sheet=null,mx=0;
+    wb.SheetNames.forEach(n=>{const r=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:""});if(r.length>mx){mx=r.length;sheet=wb.Sheets[n];}});
+    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:false});
+    if(rows[0])rows[0]=rows[0].map(h=>String(h).trim().replace(/\s+/g," "));
+    procesarPaq(rows,file.name);
+  };
+  rd.readAsArrayBuffer(file);
+};
+function procesarPaq(rows,fname){
+  const conds={};let fechaMin=null,fechaMax=null,proc=0,pag=0;
+  // Dynamic column detection from header row
+  const hdr=rows[0]||[];
+  const ci={};
+  hdr.forEach((h,i)=>{const k=String(h||"").trim().toLowerCase();ci[k]=i;});
+  const iChofer = ci["nombre conductor egreso"] ?? 26;
+  const iEstado = ci["estado sistema"] ?? 17;
+  const iTags   = ci["tags"] ?? 4;
+  const iComuna = ci["comuna"] ?? 16;
+  const iFecha  = ci["fecha egreso"] ?? 2;
+  for(let i=1;i<rows.length;i++){
+    const row=rows[i];
+    const chofer=String(row[iChofer]||"").trim();
+    const estado=String(row[iEstado]||"").trim().toLowerCase();
+    const tags=String(row[iTags]||"").trim().toUpperCase();
+    const comunaR=String(row[iComuna]||"").trim();
+    const fechaR=row[iFecha];
+    if(!chofer||!fechaR)continue;
+    const ck=nk(chofer);
+    if(EXCL.some(e=>ck.includes(e)))continue;
+    if(estado!=="completado")continue;
+    proc++;
+    let fecha;
+    if(typeof fechaR==="string"&&fechaR.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/)){
+      const p=fechaR.split(/[-\/]/);
+      fecha=new Date(p.length===3?`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`:fechaR);
+    }else fecha=new Date(fechaR);
+    if(!fecha||isNaN(fecha))continue;
+    const fs=fecha.toISOString().slice(0,10);
+    if(!fechaMin||fs<fechaMin)fechaMin=fs;if(!fechaMax||fs>fechaMax)fechaMax=fs;
+    const comunaK=nk(comunaR);
+    const tar=TARIFAS[comunaK]||null;
+    const dia=fecha.getDay(),esFer=FERIADOS.has(fs);
+    const esSab=dia===6&&!esFer,esDomFer=dia===0||esFer;
+    let tarBase=0;
+    if(tar?.a){if(esSab)tarBase=tar.a[1]||tar.a[0]||0;else if(esDomFer)tarBase=tar.a[2]||tar.a[0]||0;else tarBase=tar.a[0]||0;}
+    const isL=ck.includes("rodrigo lillo");if(isL)tarBase+=100;
+    const isCol=comunaK.includes("colina");
+    const isND=tags.includes("ND")&&!isCol;
+    const isXL=tags.includes("XXXXXL");
+    const isXX=tags.includes("XXXL")&&!isXL;
+    let val=tarBase,ndM=0,xxxM=0,xlM=0,rec=esSab?100:esDomFer?300:0;
+    if(isND){ndM=ND_C.includes(comunaK)?1200:1000;if(isL)ndM+=100;val=ndM;}
+    else if(isXL){xlM=tarBase*2;val=tarBase*3;}
+    else if(isXX){xxxM=tarBase;val=tarBase*2;}
+    if(!conds[ck]){const t=Object.values(CONDUCTORES).find(c=>nk(c.nombre)===ck)?.estado||"Fijo";conds[ck]={nombre:chofer,tipo:t,cant:0,valor_base:0,nd_cant:0,nd_monto:0,xxxl_cant:0,xxxl_monto:0,xxxxxl_cant:0,xxxxxl_monto:0,recargo:0,total:0,dias:{}};}
+    const c=conds[ck];c.cant++;c.valor_base+=tarBase;
+    if(isND){c.nd_cant++;c.nd_monto+=ndM;}if(isXX){c.xxxl_cant++;c.xxxl_monto+=xxxM;}if(isXL){c.xxxxxl_cant++;c.xxxxxl_monto+=xlM;}
+    c.recargo+=rec;c.total+=val;
+    if(!c.dias[fs])c.dias[fs]={cant:0,valor:0};c.dias[fs].cant++;c.dias[fs].valor+=val;
+    pag++;
+  }
+  paqPend={fname,conds,fechaMin,fechaMax,proc,pag};
+  const tot=Object.values(conds).reduce((a,c)=>a+c.total,0);
+  document.getElementById("paq-preview-title").textContent=`Vista previa — ${fname} (${pag.toLocaleString()} pagados de ${proc.toLocaleString()})`;
+
+  document.getElementById("paq-preview-body").innerHTML=`
+    <p style="color:var(--muted);font-size:12px">Período: ${fmtD(fechaMin)} → ${fmtD(fechaMax)} &nbsp;·&nbsp; ${Object.keys(conds).length} conductores &nbsp;·&nbsp; Total calculado: <strong>$${fmt(tot)}</strong></p>
+    <div style="max-height:180px;overflow-y:auto;margin-top:10px;font-size:12px">
+      <table style="width:100%;border-collapse:collapse">
+        <thead><tr><th style="text-align:left;padding:4px 8px;color:var(--muted);font-size:10px">CONDUCTOR</th><th style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px">PKTS</th><th style="text-align:right;padding:4px 8px;color:var(--muted);font-size:10px">TOTAL</th></tr></thead>
+        <tbody>${Object.entries(conds).sort((a,b)=>b[1].total-a[1].total).slice(0,25).map(([,c])=>`<tr><td style="padding:3px 8px">${c.nombre}</td><td style="text-align:right;padding:3px 8px;color:var(--muted)">${c.cant}</td><td style="text-align:right;padding:3px 8px;font-family:monospace">$${fmt(c.total)}</td></tr>`).join("")}</tbody>
+      </table>
+    </div>`;
+  document.getElementById("paq-preview").classList.remove("hidden");
+  document.getElementById("paq-upload").classList.add("hidden");
+}
+window.guardarPaq=async function(){
+  if(!paqPend)return;
+  const uid="paq_"+Date.now();
+  const bt=writeBatch(db);
+  bt.set(doc(db,"fin_uploads",uid),{tipo:"paqueteria",nombre:paqPend.fname,fecha_inicio:paqPend.fechaMin,fecha_max:paqPend.fechaMax,upload_fecha:new Date().toISOString(),cantidad:paqPend.pag,subido_por:CU?.email||""});
+  bt.set(doc(db,"fin_paquetes",uid),{conductores:paqPend.conds,fecha_inicio:paqPend.fechaMin,fecha_max:paqPend.fechaMax,upload_fecha:new Date().toISOString()});
+  await bt.commit();
+  PAQ_CACHE[uid]={conductores:paqPend.conds};
+  PAQ_UPS.unshift({id:uid,tipo:"paqueteria",nombre:paqPend.fname,fecha_inicio:paqPend.fechaMin,fecha_max:paqPend.fechaMax,upload_fecha:new Date().toISOString(),cantidad:paqPend.pag});
+  paqPend=null; cancelarPaq(); renderUploads(); applyFilter(); toast("Guardado en Firebase","ok");
+};
+window.cancelarPaq=function(){paqPend=null;document.getElementById("paq-preview").classList.add("hidden");document.getElementById("paq-upload").classList.remove("hidden");document.getElementById("paq-file").value="";};
+
+// ── PRIMERA MILLA ───────────────────────────────────────────
+window.handleDropPM=function(ev){ev.preventDefault();const f=ev.dataTransfer.files[0];if(f)handleFilePM(f);};
+window.handleFilePM=function(file){
+  if(!file)return;
+  const rd=new FileReader();
+  rd.onload=e=>{
+    const wb=XLSX.read(e.target.result,{type:"array",cellDates:true});
+    let sheet=null,mx=0;wb.SheetNames.forEach(n=>{const r=XLSX.utils.sheet_to_json(wb.Sheets[n],{header:1,defval:""});if(r.length>mx){mx=r.length;sheet=wb.Sheets[n];}});
+    // raw:true → valores numéricos reales (evita que "4.000" CLP se lea como 4 decimal)
+    const rows=XLSX.utils.sheet_to_json(sheet,{header:1,defval:"",raw:true,cellDates:true});
+    procesarPM(rows,file.name);
+  };
+  rd.readAsArrayBuffer(file);
+};
+// Flotas a excluir del pago
+const PM_FLOTAS_EXCL=["s.r","pendiente","bloqueado","cliente","baja cliente","total","sr"];
+// Prefijos a normalizar para matching (strip del nombre para comparar con paquetería)
+function normConductorPM(nombre){
+  return nk(nombre).replace(/^recibelo\s+/,"").replace(/^auto\s+/,"").trim();
+}
+function procesarPM(rows,fname){
+  // Detección dinámica de columnas por nombre de header
+  let start=0;
+  let iF=0,iCli=2,iCom=3,iCond=4,iTar=11,iFlo=12; // defaults para el formato nuevo
+  for(let i=0;i<Math.min(6,rows.length);i++){
+    const r=rows[i];
+    if(!r)continue;
+    const hasF=r.some(c=>String(c||"").toLowerCase().includes("fecha"));
+    const hasCond=r.some(c=>String(c||"").toLowerCase().includes("conductor"));
+    if(hasF&&hasCond){
+      start=i+1;
+      r.forEach((h,idx)=>{
+        const hk=String(h||"").toLowerCase().trim();
+        if(hk.includes("fecha")&&hk.length<8)iF=idx;
+        else if(hk.includes("cliente"))iCli=idx;
+        else if(hk.includes("comuna"))iCom=idx;
+        else if(hk===("conductor")||hk.includes("conductor"))iCond=idx;
+        else if(hk==="tarifa"||hk.includes("tarifa"))iTar=idx;
+        else if(hk==="flota"||hk.includes("flota"))iFlo=idx;
+      });
+      break;
+    }
+  }
+  const datos=[],cuniq={};let fechaMin=null,fechaMax=null;
+  for(let i=start;i<rows.length;i++){
+    const row=rows[i];
+    const conductorRaw=String(row[iCond]||"").trim();
+    const flotaExcel=String(row[iFlo]||"").trim();
+    const tarifaRaw=row[iTar];
+    const fr=row[iF];
+    if(!conductorRaw||!fr)continue;
+    // Excluir flotas no pagadas
+    if(PM_FLOTAS_EXCL.includes(nk(flotaExcel).replace(/\./g,"")))continue;
+    // Excluir tarifa 0 o vacía
+    const tarifa=typeof tarifaRaw==="number"?tarifaRaw:parseFloat(String(tarifaRaw||"0").replace(/\./g,"").replace(",","."))||0;
+    if(tarifa===0)continue;
+    // Parsear fecha
+    let fecha;
+    if(fr instanceof Date){fecha=fr.toISOString().slice(0,10);}
+    else{const s=String(fr).trim();if(s.match(/\d{1,2}[-\/]\d{1,2}[-\/]\d{4}/)){const p=s.split(/[-\/]/);fecha=`${p[2]}-${p[1].padStart(2,"0")}-${p[0].padStart(2,"0")}`;}else try{fecha=new Date(s).toISOString().slice(0,10);}catch{continue;}}
+    if(!fecha||fecha==="Invalid Date")continue;
+    if(!fechaMin||fecha<fechaMin)fechaMin=fecha;if(!fechaMax||fecha>fechaMax)fechaMax=fecha;
+    const cliente=String(row[iCli]||"").trim();
+    const comuna=String(row[iCom]||"").trim();
+    // Normalizar nombre conductor para matching (strip prefijos RECIBELO/AUTO)
+    const kMatch=normConductorPM(conductorRaw);
+    // Mapear flota del Excel a tipo del sistema
+    const fk=nk(flotaExcel).replace(/\./g,"");
+    let tipoSistema="Fijo";
+    if(fk==="apoyo")tipoSistema="Apoyo";
+    else if(fk==="corporativo")tipoSistema="Corporativo";
+    else if(fk.includes("externo")||fk==="externoa")tipoSistema="Flota Externa";
+    else if(fk==="confirmar")tipoSistema="Fijo";
+    if(!cuniq[kMatch]){
+      const cm=Object.entries(CONDUCTORES).find(([,c])=>normConductorPM(c.nombre)===kMatch)||
+               Object.entries(CONDUCTORES).find(([,c])=>nk(c.nombre)===kMatch);
+      // También buscar en datos de paquetería ya cargados
+      let paqMatch=null;
+      if(!cm){for(const u of Object.values(PAQ_CACHE)){if(!u?.conductores)continue;const f=Object.values(u.conductores).find(c=>normConductorPM(c.nombre)===kMatch||nk(c.nombre)===kMatch);if(f){paqMatch=f;break;}}}
+      const fm=PM_FLOTAS[kMatch]||PM_FLOTAS[nk(conductorRaw)];
+      const flotaFinal=fm?fm.flota:tipoSistema;
+      const nombreDisplay=conductorRaw;
+      // Conocido si: está en fin_conductores, en PAQ_CACHE, en PM_FLOTAS,
+      // O si el Excel ya lo identifica claramente como flota externa
+      const flotaExcelNk=nk(flotaExcel);
+      const esExternoClaro=flotaExcelNk.includes("externo")||flotaExcelNk==="corporativo"||flotaExcelNk==="apoyo";
+      const conocido=!!(cm||paqMatch||fm||esExternoClaro);
+      const asignado=cm?cm[1].nombre:(paqMatch?paqMatch.nombre:nombreDisplay);
+      cuniq[kMatch]={conductor_raw:conductorRaw,flota_excel:flotaExcel,conocido,mem:!!fm,tipo:flotaFinal,asignado,count:0,total:0};
+    }
+    cuniq[kMatch].count++;cuniq[kMatch].total+=tarifa;
+    datos.push({fecha,cliente,comuna,conductor:conductorRaw,conductor_key:kMatch,tarifa,flota:flotaExcel});
+  }
+  pmPend={fname,datos,cuniq,fechaMin,fechaMax};
+  const sorted=Object.entries(cuniq).sort((a,b)=>{if(!a[1].conocido&&b[1].conocido)return -1;if(a[1].conocido&&!b[1].conocido)return 1;return 0;});
+  document.getElementById("pm-val-tbody").innerHTML=sorted.map(([k,info])=>{
+    const icon=info.conocido?(info.mem?"🔖":"✅"):"⚠️";
+    const opts=["Fijo","Apoyo","Corporativo","Flota XL","Flota Externa"].map(t=>`<option${info.tipo===t?" selected":""}>${t}</option>`).join("");
+    const flotaBadge=`<span style="font-size:10px;color:var(--muted);margin-left:4px">[${info.flota_excel||""}]</span>`;
+    return `<tr><td style="font-size:18px">${icon}</td><td>${info.conductor_raw}${flotaBadge}<br><span style="color:var(--muted);font-size:11px">${info.count} retiros · $${fmt(info.total)}</span></td><td><input type="text" id="pmc-${k}" value="${info.asignado}" list="conductores-dl" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:180px"></td><td><select id="pmt-${k}" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px">${opts}</select></td></tr>`;
+  }).join("");
+  document.getElementById("pm-validation").classList.remove("hidden");
+  document.getElementById("pm-upload").classList.add("hidden");
+}
+window.confirmarPM=async function(){
+  if(!pmPend)return;
+  const{datos,cuniq,fname,fechaMin,fechaMax}=pmPend;
+  for(const[k,info]of Object.entries(cuniq)){
+    const tipo=document.getElementById("pmt-"+k)?.value||info.tipo;
+    if(tipo!=="Fijo"&&!info.conocido){await setDoc(doc(db,"fin_pm_flotas",k),{flota:tipo,conductor_raw:info.conductor_raw});PM_FLOTAS[k]={flota:tipo,conductor_raw:info.conductor_raw};}
+  }
+  const datosF=datos.map(r=>({...r,conductor:document.getElementById("pmc-"+r.conductor_key)?.value||r.conductor,tipo_flota:document.getElementById("pmt-"+r.conductor_key)?.value||"Fijo",flota_excel:r.flota||r.flota_excel||r.tipo_flota||"Fijo"}));
+  const uid="pm_"+Date.now();const bt=writeBatch(db);
+  bt.set(doc(db,"fin_uploads",uid),{tipo:"pm",nombre:fname,fecha_inicio:fechaMin,fecha_max:fechaMax,upload_fecha:new Date().toISOString(),cantidad:datos.length,subido_por:CU?.email||""});
+  bt.set(doc(db,"fin_pm",uid),{datos:datosF,fecha_inicio:fechaMin,fecha_max:fechaMax,upload_fecha:new Date().toISOString()});
+  await bt.commit();
+  PM_CACHE[uid]={datos:datosF};PM_UPS.unshift({id:uid,tipo:"pm",nombre:fname,fecha_inicio:fechaMin,fecha_max:fechaMax,upload_fecha:new Date().toISOString(),cantidad:datos.length});
+  pmPend=null;cancelarPM();renderUploads();refrescaDatalist();applyFilter();toast("Primera Milla guardada","ok");
+};
+window.cancelarPM=function(){pmPend=null;document.getElementById("pm-validation").classList.add("hidden");document.getElementById("pm-upload").classList.remove("hidden");document.getElementById("pm-file").value="";};
+
+// ── BONOS ───────────────────────────────────────────────────
+window.guardarBono=async function(){
+  const c=document.getElementById("bon-chofer").value.trim();
+  // Validate conductor exists in known list
+  const dl=document.getElementById("conductores-dl");
+  const opciones=[...dl.querySelectorAll("option")].map(o=>nk(o.value));
+  if(opciones.length>0&&!opciones.includes(nk(c))){
+    if(!confirm(`"${c}" no está en la lista de conductores conocidos. ¿Agregar el bono de todas formas?`))return;
+  }
+  const m=parseFloat(document.getElementById("bon-monto").value)||0;
+  const f=document.getElementById("bon-fecha").value;
+  const mo=document.getElementById("bon-motivo").value.trim();
+  if(!c||!m||!f){toast("Completa todos los campos","err");return;}
+  const ref=await addDoc(collection(db,"fin_bonos"),{chofer:c,chofer_key:nk(c),monto:m,fecha:f,motivo:mo,subido_por:CU?.email||"",upload_fecha:new Date().toISOString()});
+  BONOS.unshift({id:ref.id,chofer:c,chofer_key:nk(c),monto:m,fecha:f,motivo:mo});
+  renderBonos();applyFilter();toast("Bono agregado","ok");
+  ["bon-chofer","bon-monto","bon-motivo"].forEach(id=>document.getElementById(id).value="");
+};
+function renderBonos(){
+  const desde=document.getElementById("bon-desde")?.value||"",hasta=document.getElementById("bon-hasta")?.value||"";
+  const bl=BONOS.filter(b=>(!desde||b.fecha>=desde)&&(!hasta||b.fecha<=hasta));
+  const tb=document.getElementById("tbody-bonos");
+  if(!bl.length){tb.innerHTML=`<tr><td colspan="5"><div class="empty-state"><div class="icon">⭐</div>Sin bonos en el período</div></td></tr>`;return;}
+  tb.innerHTML=bl.map(b=>`<tr><td style="font-weight:700">${b.chofer}</td><td>${b.motivo||"—"}</td><td>${fmtD(b.fecha)}</td><td class="monto">$${fmt(b.monto)}</td><td><button class="btn btn-danger btn-sm" onclick="eliminarBono('${b.id}')">🗑</button></td></tr>`).join("");
+}
+window.eliminarBono=async function(id){if(!confirm("¿Eliminar bono?"))return;await deleteDoc(doc(db,"fin_bonos",id));BONOS=BONOS.filter(b=>b.id!==id);renderBonos();applyFilter();toast("Eliminado","ok");};
+
+// ── TARIFAS ─────────────────────────────────────────────────
+function renderTarifas(){
+  const tb=document.getElementById("tar-tbody");
+  const keys=Object.keys(TARIFAS).sort((a,b)=>(TARIFAS[a].nombre||a).localeCompare(TARIFAS[b].nombre||b));
+  if(!keys.length){tb.innerHTML='<tr><td colspan="9" style="text-align:center;padding:20px;color:var(--muted)">Sin tarifas. Carga el archivo sync para comenzar.</td></tr>';return;}
+  const ZONA_LABEL={"azul_claro":"🔵 Azul","naranja":"🟠 Naranja","amarillo":"🟡 Amarillo","azul_oscuro":"🔵+ Oscuro","colina":"🩷 Colina"};
+  const ZONA_COLOR={"azul_claro":"#3b82f6","naranja":"#f97316","amarillo":"#eab308","azul_oscuro":"#1d4ed8","colina":"#ec4899"};
+  tb.innerHTML=keys.map(k=>{const t=TARIFAS[k];const z=t.zona||"";const zc=ZONA_COLOR[z]||"var(--muted)";const zl=ZONA_LABEL[z]||z;
+    return '<tr data-key="'+k+'">'
+      +'<td><input type="text" value="'+( t.nombre||k)+'" data-f="nombre" style="background:var(--card2);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:6px;width:150px"></td>'
+      +'<td style="text-align:center"><span style="background:'+zc+'22;color:'+zc+';border:1px solid '+zc+'44;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700;white-space:nowrap">'+zl+'</span></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.a?.[0]||0)+'" data-f="a0" class="tar-input"></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.a?.[1]||0)+'" data-f="a1" class="tar-input"></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.a?.[2]||0)+'" data-f="a2" class="tar-input"></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.m?.[0]||0)+'" data-f="m0" class="tar-input"></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.m?.[1]||0)+'" data-f="m1" class="tar-input"></td>'
+      +'<td style="text-align:center"><input type="number" value="'+(t.m?.[2]||0)+'" data-f="m2" class="tar-input"></td>'
+      +'<td><button class="btn btn-danger btn-sm" onclick="eliminarTarifa(\''+k+'\')">🗑</button></td>'
+      +'</tr>';}).join("");
+}
+window.agregarComuna=function(){const n=prompt("Nombre de la nueva comuna:");if(!n)return;const k=nk(n);TARIFAS[k]={nombre:n,zona:"",a:[0,0,0],m:[0,0,0]};renderTarifas();};
+window.guardarTarifas=async function(){
+  const rows=document.querySelectorAll("#tar-tbody tr[data-key]");
+  const bt=writeBatch(db);
+  rows.forEach(row=>{
+    const k=row.dataset.key;
+    const nombre=row.querySelector("[data-f=nombre]")?.value||k;
+    const a=[parseInt(row.querySelector("[data-f=a0]")?.value)||0,parseInt(row.querySelector("[data-f=a1]")?.value)||0,parseInt(row.querySelector("[data-f=a2]")?.value)||0];
+    const m=[parseInt(row.querySelector("[data-f=m0]")?.value)||0,parseInt(row.querySelector("[data-f=m1]")?.value)||0,parseInt(row.querySelector("[data-f=m2]")?.value)||0];
+    const nk2=nk(nombre);
+    if(nk2!==k)delete TARIFAS[k];
+    TARIFAS[nk2]={nombre,zona:TARIFAS[k]?.zona||"",a,m};
+    bt.set(doc(db,"fin_tarifas",nk2),{nombre,zona:TARIFAS[k]?.zona||"",a,m});
+  });
+  await bt.commit();renderTarifas();toast("Tarifas guardadas","ok");
+};
+window.eliminarTarifa=async function(k){if(!confirm("¿Eliminar tarifa de "+(TARIFAS[k]?.nombre||k)+"?"))return;await deleteDoc(doc(db,"fin_tarifas",k));delete TARIFAS[k];renderTarifas();toast("Eliminada","ok");};
+
+// ── ADMIN ───────────────────────────────────────────────────
+window.guardarConductor=async function(){
+  const n=document.getElementById("cond-nombre").value.trim();
+  const e=document.getElementById("cond-tipo").value;
+  if(!n){toast("Ingresa nombre","err");return;}
+  const k=nk(n);await setDoc(doc(db,"fin_conductores",k),{nombre:n,estado:e});
+  CONDUCTORES[k]={nombre:n,estado:e};renderAdminConductores();refrescaDatalist();
+  document.getElementById("cond-nombre").value="";toast("Conductor guardado","ok");
+};
+function renderAdminConductores(){
+  const el=document.getElementById("admin-conductores");
+  const cs=Object.entries(CONDUCTORES).sort((a,b)=>a[1].nombre?.localeCompare(b[1].nombre||""));
+  if(!cs.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:6px">Sin conductores registrados</div>`;return;}
+  el.innerHTML=cs.map(([k,c])=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="flex:1;font-size:12px">${c.nombre}</span><span class="badge-tipo badge-${c.estado?.replace(" ","")}" style="font-size:10px">${c.estado}</span><button class="btn btn-danger btn-sm" onclick="eliminarConductor('${k}')">🗑</button></div>`).join("");
+}
+window.eliminarConductor=async function(k){if(!confirm("¿Eliminar conductor "+CONDUCTORES[k]?.nombre+"?"))return;await deleteDoc(doc(db,"fin_conductores",k));delete CONDUCTORES[k];renderAdminConductores();refrescaDatalist();toast("Eliminado","ok");};
+window.guardarFeriado=async function(){
+  const f=document.getElementById("fer-fecha").value;if(!f){toast("Selecciona fecha","err");return;}
+  await setDoc(doc(db,"fin_feriados",f),{fecha:f});FERIADOS.add(f);renderFeriados();toast("Feriado agregado","ok");
+};
+function renderFeriados(){
+  const el=document.getElementById("admin-feriados");
+  const fs=[...FERIADOS].sort().reverse();
+  if(!fs.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px;padding:6px">Sin feriados registrados</div>`;return;}
+  el.innerHTML=fs.map(f=>`<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)"><span style="flex:1;font-size:12px">${fmtD(f)}</span><button class="btn btn-danger btn-sm" onclick="eliminarFeriado('${f}')">🗑</button></div>`).join("");
+}
+window.eliminarFeriado=async function(f){await deleteDoc(doc(db,"fin_feriados",f));FERIADOS.delete(f);renderFeriados();toast("Eliminado","ok");};
+
+// ── CERRAR MES ──────────────────────────────────────────────
+window.cerrarMes=async function(){
+  const per=document.getElementById("cerrar-periodo").value;
+  if(!per){toast("Selecciona período","err");return;}
+  const[y,m]=per.split("-"),desde=`${y}-${m}-01`,hasta=`${y}-${m}-31`;
+  const pE=PAQ_UPS.filter(u=>u.fecha_inicio<=hasta&&(u.fecha_max||u.fecha_inicio)>=desde);
+  const pmE=PM_UPS.filter(u=>u.fecha_inicio<=hasta&&(u.fecha_max||u.fecha_inicio)>=desde);
+  for(const u of pE){if(!PAQ_CACHE[u.id]){const s=await getDoc(doc(db,"fin_paquetes",u.id));if(s.exists())PAQ_CACHE[u.id]=s.data();}}
+  for(const u of pmE){if(!PM_CACHE[u.id]){const s=await getDoc(doc(db,"fin_pm",u.id));if(s.exists())PM_CACHE[u.id]=s.data();}}
+  const agg={};
+  for(const u of pE){const d=PAQ_CACHE[u.id];if(!d?.conductores)continue;for(const[k,c]of Object.entries(d.conductores)){if(!agg[k])agg[k]={nombre:c.nombre,tipo:c.tipo||"Fijo",paq:0,pkts:0,pm:0,bon:0};agg[k].paq+=c.total||0;agg[k].pkts+=c.cant||0;}}
+  for(const u of pmE){const d=PM_CACHE[u.id];if(!d?.datos)continue;for(const r of d.datos){if(r.fecha<desde||r.fecha>hasta)continue;const k=nk(r.conductor);if(!agg[k])agg[k]={nombre:r.conductor,tipo:r.tipo_flota||"Fijo",paq:0,pkts:0,pm:0,bon:0};agg[k].pm+=r.tarifa||0;}}
+  for(const b of BONOS){if(b.fecha<desde||b.fecha>hasta)continue;const k=nk(b.chofer);if(!agg[k])agg[k]={nombre:b.chofer,tipo:"Fijo",paq:0,pkts:0,pm:0,bon:0};agg[k].bon+=b.monto||0;}
+  const conductores=Object.values(agg).map(c=>({...c,total:c.paq+c.pm+c.bon})).sort((a,b)=>b.total-a.total);
+  const totales={paq:conductores.reduce((a,c)=>a+c.paq,0),pm:conductores.reduce((a,c)=>a+c.pm,0),bon:conductores.reduce((a,c)=>a+c.bon,0),total:conductores.reduce((a,c)=>a+c.total,0)};
+  await setDoc(doc(db,"fin_liquidaciones",per),{periodo:per,fecha_cierre:new Date().toISOString(),cerrado_por:CU?.email||"",conductores,totales});
+  LIQUIDACIONES.unshift({id:per,periodo:per,fecha_cierre:new Date().toISOString(),conductores,totales});
+  // Excel
+  const wb=XLSX.utils.book_new();
+  const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const titulo=`LIQUIDACIÓN ${meses[parseInt(m)-1].toUpperCase()} ${y}`;
+  const data=[[titulo],[""],["Conductor","Tipo","Paquetería","Paquetes","Primera Milla","Bonos","TOTAL"]];
+  conductores.forEach(c=>data.push([c.nombre,c.tipo,c.paq,c.pkts,c.pm,c.bon,c.total]));
+  data.push([]);data.push(["","","TOTAL PAQ","","TOTAL PM","TOTAL BONOS","TOTAL GENERAL"]);
+  data.push(["","",totales.paq,"",totales.pm,totales.bon,totales.total]);
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),"Liquidación");
+  XLSX.writeFile(wb,`Liquidacion_${per}.xlsx`);
+  renderLiquidaciones();toast("Mes cerrado — Excel descargado","ok");
+  if(confirm("¿Purgar archivos de paquetería y PM de este período en Firebase para liberar espacio?\n(El resumen ya quedó guardado como snapshot)")){
+    const bt=writeBatch(db);
+    for(const u of pE){bt.delete(doc(db,"fin_uploads",u.id));bt.delete(doc(db,"fin_paquetes",u.id));}
+    for(const u of pmE){bt.delete(doc(db,"fin_uploads",u.id));bt.delete(doc(db,"fin_pm",u.id));}
+    await bt.commit();
+    pE.forEach(u=>{PAQ_UPS=PAQ_UPS.filter(x=>x.id!==u.id);delete PAQ_CACHE[u.id];});
+    pmE.forEach(u=>{PM_UPS=PM_UPS.filter(x=>x.id!==u.id);delete PM_CACHE[u.id];});
+    renderUploads();applyFilter();toast("Firebase liberado","ok");
+  }
+};
+function renderLiquidaciones(){
+  const el=document.getElementById("liquidaciones-list");
+  if(!LIQUIDACIONES.length){el.innerHTML=`<div style="color:var(--muted);font-size:12px">Sin períodos cerrados aún</div>`;return;}
+  el.innerHTML=`<div style="font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;letter-spacing:1px">PERÍODOS CERRADOS</div>`+LIQUIDACIONES.map(l=>`<div style="display:flex;align-items:center;gap:10px;padding:7px 0;border-bottom:1px solid var(--border)"><span style="font-weight:700">${l.periodo}</span><span style="color:var(--muted);font-size:12px">$${fmt(l.totales?.total||0)}</span><span style="color:var(--muted);font-size:11px">${new Date(l.fecha_cierre).toLocaleDateString("es-CL")}</span><button class="btn btn-secondary btn-sm" onclick="reexportar('${l.id}')">⬇ Excel</button></div>`).join("");
+}
+window.reexportar=function(id){
+  const l=LIQUIDACIONES.find(x=>x.id===id);if(!l)return;
+  const wb=XLSX.utils.book_new();
+  const data=[[`LIQUIDACIÓN ${l.periodo}`],[""],["Conductor","Tipo","Paquetería","Paquetes","Primera Milla","Bonos","TOTAL"]];
+  (l.conductores||[]).forEach(c=>data.push([c.nombre,c.tipo,c.paq,c.pkts,c.pm,c.bon,c.total]));
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(data),"Liquidación");
+  XLSX.writeFile(wb,`Liquidacion_${l.periodo}.xlsx`);toast("Excel descargado","ok");
+};
+
+// ── UPLOADS LIST ────────────────────────────────────────────
+function renderUploads(){
+  const pEl=document.getElementById("paq-uploads-list");
+  pEl.innerHTML=PAQ_UPS.length?PAQ_UPS.map(u=>`<div class="upload-item"><span style="font-size:22px">📦</span><div class="ui-info"><div class="ui-name">${u.nombre||u.id}</div><div class="ui-meta">${fmtD(u.fecha_inicio)} → ${fmtD(u.fecha_max)} · ${fmt(u.cantidad||0)} paquetes · Subido ${new Date(u.upload_fecha).toLocaleDateString("es-CL")}</div></div><button class="btn btn-danger btn-sm" onclick="eliminarUpload('paqueteria','${u.id}')">🗑</button></div>`).join(""):
+    `<div class="empty-state" style="padding:16px"><div class="icon">📂</div>Sin archivos aún</div>`;
+  const pmEl=document.getElementById("pm-uploads-list");
+  pmEl.innerHTML=PM_UPS.length?PM_UPS.map(u=>`<div class="upload-item"><span style="font-size:22px">🚚</span><div class="ui-info"><div class="ui-name">${u.nombre||u.id}</div><div class="ui-meta">${fmtD(u.fecha_inicio)} → ${fmtD(u.fecha_max)} · ${fmt(u.cantidad||0)} retiros · Subido ${new Date(u.upload_fecha).toLocaleDateString("es-CL")}</div></div><button class="btn btn-danger btn-sm" onclick="eliminarUpload('pm','${u.id}')">🗑</button></div>`).join(""):
+    `<div class="empty-state" style="padding:16px"><div class="icon">📂</div>Sin archivos aún</div>`;
+}
+window.eliminarUpload=async function(tipo,uid){
+  if(!confirm("¿Eliminar este archivo y sus datos?"))return;
+  const bt=writeBatch(db);
+  bt.delete(doc(db,"fin_uploads",uid));
+  bt.delete(doc(db,tipo==="paqueteria"?"fin_paquetes":"fin_pm",uid));
+  await bt.commit();
+  if(tipo==="paqueteria"){PAQ_UPS=PAQ_UPS.filter(u=>u.id!==uid);delete PAQ_CACHE[uid];}
+  else{PM_UPS=PM_UPS.filter(u=>u.id!==uid);delete PM_CACHE[uid];}
+  renderUploads();applyFilter();toast("Eliminado","ok");
+};
+
+// ── TABS ─────────────────────────────────────────────────────
+window.switchTab=function(btn,tab){
+  document.querySelectorAll(".tab-btn").forEach(b=>b.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(c=>c.classList.remove("active"));
+  btn.classList.add("active");
+  document.getElementById("tab-"+tab).classList.add("active");
+};
+
+// ── INIT (gestionado por /shared/auth.js) ────────────────────
+setupAuth({
+  modulo: "operacional",
+  onReady: async (user, roles) => {
+    CU = user;
+    const ld = document.getElementById("loading");
+    const ap = document.getElementById("app");
+    if (ld) ld.style.display = "flex";
+    if (ap) ap.style.display = "none";
+    try {
+      await loadAll();
+      await applyFilter();
+      const hoy = new Date().toISOString().slice(0, 7);
+      document.getElementById("cerrar-periodo").value = hoy;
+      document.getElementById("bon-fecha").value = new Date().toISOString().slice(0, 10);
+      if (ld) ld.style.display = "none";
+      if (ap) ap.style.display = "flex";
+    } catch(e) {
+      if (ld) ld.innerHTML = '<div style="color:var(--rojo);text-align:center;padding:20px">Error Firebase:<br>' + e.message + '</div>';
+    }
+  }
+});
+</script>
+</body>
+</html>

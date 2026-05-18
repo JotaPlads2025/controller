@@ -1,0 +1,938 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recíbelo — Controller de Procesos</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2f45;
+    --orange: #FF6B35; --orange2: #ff8c5a;
+    --text: #e2e8f0; --muted: #64748b; --muted2: #94a3b8;
+    --l1: #ef4444; --l2: #f59e0b; --l3: #3b82f6; --l4: #22c55e;
+    --sidebar: 220px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; min-height: 100vh; }
+
+  /* LOGIN SCREEN */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; background: var(--bg); }
+  .login-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+  .login-logo { width: 64px; height: 64px; background: var(--orange); border-radius: 16px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: 900; margin: 0 auto 20px; color: white; }
+  .login-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .login-sub { color: var(--muted2); font-size: 14px; margin-bottom: 36px; line-height: 1.5; }
+  .login-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px 20px; background: #2a2f45; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; text-decoration: none; }
+  .login-btn:hover { background: #333a55; border-color: var(--orange); }
+  .login-btn svg { flex-shrink: 0; }
+  .login-error { margin-top: 16px; color: var(--l1); font-size: 13px; min-height: 20px; }
+  .login-footer { margin-top: 32px; font-size: 12px; color: var(--muted); }
+
+  /* USER CHIP */
+  .user-chip { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px 5px 8px; cursor: pointer; transition: all 0.15s; }
+  .user-chip:hover { background: rgba(239,68,68,0.1); border-color: var(--l1); }
+  .user-avatar { width: 26px; height: 26px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; color: white; }
+  .user-name { font-size: 13px; color: var(--muted2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .user-logout { font-size: 11px; color: var(--muted); }
+
+  /* HEADER */
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 16px; }
+  .logo-dot { width: 28px; height: 28px; background: var(--orange); border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .header-right { display: flex; align-items: center; gap: 8px; }
+  #last-update { font-size: 12px; color: var(--muted); }
+
+  /* LAYOUT */
+  .layout { display: flex; flex: 1; }
+  nav { width: var(--sidebar); background: var(--card); border-right: 1px solid var(--border); padding: 16px 0; position: sticky; top: 56px; height: calc(100vh - 56px); overflow-y: auto; flex-shrink: 0; }
+  nav a { display: flex; align-items: center; gap: 10px; padding: 10px 20px; color: var(--muted2); text-decoration: none; font-size: 14px; cursor: pointer; transition: all 0.15s; border-left: 3px solid transparent; }
+  nav a:hover { color: var(--text); background: rgba(255,107,53,0.06); }
+  nav a.active { color: var(--orange); background: rgba(255,107,53,0.1); border-left-color: var(--orange); font-weight: 600; }
+  nav .nav-section { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: var(--muted); padding: 16px 20px 6px; }
+  main { flex: 1; padding: 28px; overflow-x: hidden; }
+
+  /* SEARCH BAR */
+  .search-bar { width: 100%; max-width: 340px; background: var(--card); border: 1px solid var(--border); border-radius: 8px; padding: 8px 14px; color: var(--text); font-size: 14px; outline: none; }
+  .search-bar:focus { border-color: var(--orange); }
+  .search-bar::placeholder { color: var(--muted); }
+
+  /* VIEWS */
+  .view { display: none; }
+  .view.active { display: block; }
+  .view-title { font-size: 22px; font-weight: 700; margin-bottom: 6px; }
+  .view-sub { color: var(--muted2); font-size: 14px; margin-bottom: 24px; }
+
+  /* KPI CARDS */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 28px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .kpi-label { font-size: 12px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .kpi-value { font-size: 32px; font-weight: 800; }
+  .kpi-sub { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .kpi.orange { border-left: 3px solid var(--orange); }
+  .kpi.green  { border-left: 3px solid var(--l4); }
+  .kpi.red    { border-left: 3px solid var(--l1); }
+  .kpi.blue   { border-left: 3px solid var(--l3); }
+
+  /* CHARTS */
+  .charts-row { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 28px; }
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+  .chart-title { font-size: 14px; font-weight: 600; margin-bottom: 16px; color: var(--muted2); }
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* TABLE */
+  .table-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+  .table-header { padding: 16px 20px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; flex-wrap: gap; gap: 12px; }
+  .table-header-title { font-size: 14px; font-weight: 600; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { padding: 10px 14px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); background: rgba(255,255,255,0.02); border-bottom: 1px solid var(--border); }
+  td { padding: 11px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); vertical-align: middle; }
+  tr:hover td { background: rgba(255,107,53,0.04); }
+  tr:last-child td { border-bottom: none; }
+
+  /* BADGES */
+  .badge { display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; }
+  .badge-l1 { background: rgba(239,68,68,0.15); color: var(--l1); }
+  .badge-l2 { background: rgba(245,158,11,0.15); color: var(--l2); }
+  .badge-l3 { background: rgba(59,130,246,0.15); color: var(--l3); }
+  .badge-l4 { background: rgba(34,197,94,0.15); color: var(--l4); }
+  .badge-na { background: rgba(100,116,139,0.15); color: var(--muted2); }
+  .badge-area { background: rgba(255,107,53,0.12); color: var(--orange); font-size: 10px; }
+
+  /* FILTERS */
+  .filters { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 20px; }
+  select.filter { background: var(--card); border: 1px solid var(--border); color: var(--text); padding: 7px 12px; border-radius: 8px; font-size: 13px; cursor: pointer; outline: none; }
+  select.filter:focus { border-color: var(--orange); }
+
+  /* DETAIL PANEL */
+  .detail-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 200; }
+  .detail-pdf-btn { position: absolute; top: 16px; right: 52px; background: rgba(255,107,53,0.15); border: 1px solid rgba(255,107,53,0.3); color: var(--orange); border-radius: 8px; padding: 6px 12px; font-size: 12px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .detail-pdf-btn:hover { background: rgba(255,107,53,0.25); }
+  .detail-overlay.open { display: flex; align-items: flex-start; justify-content: flex-end; }
+  .detail-panel { width: min(480px, 100vw); height: 100vh; background: var(--card); border-left: 1px solid var(--border); overflow-y: auto; padding: 28px; }
+  .detail-close { float: right; background: none; border: none; color: var(--muted2); font-size: 22px; cursor: pointer; }
+  .detail-code { font-size: 12px; color: var(--orange); font-weight: 700; margin-bottom: 6px; }
+  .detail-name { font-size: 20px; font-weight: 700; margin-bottom: 20px; line-height: 1.3; }
+  .detail-row { display: flex; gap: 12px; margin-bottom: 12px; align-items: flex-start; }
+  .detail-key { font-size: 12px; color: var(--muted2); width: 130px; flex-shrink: 0; padding-top: 2px; }
+  .detail-val { font-size: 13px; color: var(--text); flex: 1; word-break: break-word; }
+  .detail-obs { background: rgba(255,255,255,0.04); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--muted2); margin-top: 16px; line-height: 1.6; }
+  .detail-link { color: var(--orange); text-decoration: none; font-size: 12px; }
+  .detail-link:hover { text-decoration: underline; }
+
+  /* AREA TABLE */
+  .area-progress { height: 6px; background: rgba(255,255,255,0.08); border-radius: 3px; margin-top: 6px; overflow: hidden; }
+  .area-progress-bar { height: 100%; border-radius: 3px; background: var(--orange); }
+
+  /* EMPTY */
+  .empty { text-align: center; padding: 48px; color: var(--muted); font-size: 14px; }
+
+  /* LOADING */
+  #loading { position: fixed; inset: 0; background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 999; gap: 16px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* COLORES AREA */
+  .nivel-bar-wrap { display: flex; gap: 2px; height: 8px; border-radius: 4px; overflow: hidden; }
+  .nivel-seg { height: 100%; }
+
+  /* CONSULTA RÁPIDA */
+  .consulta-input-wrap { position: relative; margin-bottom: 28px; }
+  .consulta-input { width: 100%; background: var(--card); border: 2px solid var(--border); border-radius: 12px; padding: 16px 20px; color: var(--text); font-size: 18px; outline: none; transition: border-color 0.2s; }
+  .consulta-input:focus { border-color: var(--orange); }
+  .consulta-input::placeholder { color: var(--muted); }
+  .consulta-hint { font-size: 12px; color: var(--muted); margin-top: 8px; }
+  .consulta-results { display: flex; flex-direction: column; gap: 14px; }
+  .consulta-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 20px; transition: border-color 0.15s; }
+  .consulta-card:hover { border-color: var(--orange); }
+  .consulta-card-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
+  .consulta-card-title { font-size: 16px; font-weight: 700; line-height: 1.3; }
+  .consulta-card-code { font-size: 11px; color: var(--orange); font-weight: 700; margin-bottom: 4px; }
+  .consulta-card-badges { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; flex-shrink: 0; }
+  .consulta-fields { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+  .consulta-field { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 10px 12px; }
+  .consulta-field-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); margin-bottom: 4px; }
+  .consulta-field-val { font-size: 13px; color: var(--text); }
+  .consulta-field-val.empty { color: var(--muted); font-style: italic; }
+  .consulta-obs { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; font-size: 13px; color: var(--muted2); line-height: 1.6; }
+  .consulta-gap { background: rgba(239,68,68,0.08); border: 1px solid rgba(239,68,68,0.2); border-radius: 8px; padding: 10px 14px; font-size: 12px; color: var(--l1); margin-top: 12px; }
+  .consulta-empty { text-align: center; padding: 60px 20px; color: var(--muted); }
+  .consulta-empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+  @media (max-width: 768px) {
+    nav { display: none; }
+    .charts-row { grid-template-columns: 1fr; }
+    main { padding: 16px; }
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .consulta-fields { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<!-- LOGIN SCREEN -->
+<div id="login-screen" style="display:none">
+  <div class="login-card">
+    <img src="/logo.png" alt="Recíbelo" style="height:56px;margin:0 auto 24px;display:block;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))">
+    <div class="login-title">Controller de Procesos</div>
+    <div class="login-sub">Sistema de auditoría documental.<br>Ingresa con tu cuenta corporativa.</div>
+    <button class="login-btn" onclick="signInWithMicrosoft()">
+      <svg width="20" height="20" viewBox="0 0 21 21" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Continuar con Microsoft
+    </button>
+    <div style="display:flex;align-items:center;gap:10px;margin:14px 0">
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+      <span style="font-size:12px;color:var(--muted)">o</span>
+      <div style="flex:1;height:1px;background:var(--border)"></div>
+    </div>
+    <button class="login-btn" onclick="signInWithGoogle()">
+      <svg width="20" height="20" viewBox="0 0 48 48" xmlns="http://www.w3.org/2000/svg">
+        <path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/>
+        <path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/>
+        <path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/>
+        <path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/>
+        <path fill="none" d="M0 0h48v48H0z"/>
+      </svg>
+      Continuar con Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-footer">Solo usuarios autorizados por Recíbelo</div>
+  </div>
+</div>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted2);font-size:14px">Cargando datos desde Firebase...</div>
+</div>
+
+<header id="main-header" style="display:none">
+  <div class="logo">
+    <img src="/logo.png" alt="Recíbelo" style="height:28px;filter:brightness(1)">
+    <span style="color:var(--muted2);font-size:13px;font-weight:500">Controller</span>
+  </div>
+  <div class="header-right">
+    <span id="last-update"></span>
+    <div class="user-chip" onclick="doSignOut()" title="Cerrar sesión">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <span class="user-name" id="user-name"></span>
+      <span class="user-logout">salir</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout" id="main-layout" style="display:none">
+  <nav>
+    <div class="nav-section">Vistas</div>
+    <a class="active" onclick="showView('dashboard')">📊 Dashboard</a>
+    <a onclick="showView('consulta')">🔍 Consulta Rápida</a>
+    <a onclick="showView('procesos')">📋 Procesos</a>
+    <a onclick="showView('colaboradores')">👥 Colaboradores</a>
+    <a onclick="showView('funciones')">⚙️ Funciones</a>
+    <div class="nav-section">Módulos</div>
+    <a href="/" style="border-left-color:var(--orange);color:var(--orange);background:rgba(255,107,53,0.08)">📋 Controller</a>
+    <a href="/asistencia_ruta">🚚 Asistencia Ruta</a>
+    <a id="sidebar-operacional" href="/operacional" style="opacity:0.35;pointer-events:auto">⚙️ Operacional</a>
+      <a id="sidebar-finanzas" style="opacity:0.35;cursor:not-allowed;pointer-events:none">💰 Finanzas <span style="font-size:10px;color:var(--muted)">(pronto)</span></a>
+
+    <div class="nav-section">Áreas</div>
+    <a onclick="filterByArea('OP')">🏭 Operaciones</a>
+    <a onclick="filterByArea('CX')">💬 CX</a>
+    <a onclick="filterByArea('FIN')">💰 Finanzas</a>
+    <a onclick="filterByArea('COM')">📈 Comercial</a>
+    <a onclick="filterByArea('GP')">🧑‍🤝‍🧑 Gest. Personas</a>
+    <a onclick="filterByArea('CTRL')">🎯 Proyectos</a>
+    <a onclick="filterByArea('LOG')">🚚 Logística</a>
+    <a onclick="filterByArea('IT')">💻 TI</a>
+    <a onclick="filterByArea('MKT')">📣 Marketing</a>
+  </nav>
+
+  <main>
+
+    <!-- DASHBOARD -->
+    <div id="view-dashboard" class="view active">
+      <div class="view-title">Dashboard</div>
+      <div class="view-sub">Estado general de la documentación de procesos — Recíbelo</div>
+
+      <div class="kpi-grid">
+        <div class="kpi orange">
+          <div class="kpi-label">Total Procesos</div>
+          <div class="kpi-value" id="kpi-total">—</div>
+          <div class="kpi-sub">documentados</div>
+        </div>
+        <div class="kpi blue">
+          <div class="kpi-label">Madurez Promedio</div>
+          <div class="kpi-value" id="kpi-avg">—</div>
+          <div class="kpi-sub">meta: 3.0</div>
+        </div>
+        <div class="kpi green">
+          <div class="kpi-label">L3 + L4</div>
+          <div class="kpi-value" id="kpi-l3l4">—</div>
+          <div class="kpi-sub">procesos auditables</div>
+        </div>
+        <div class="kpi red">
+          <div class="kpi-label">En L1</div>
+          <div class="kpi-value" id="kpi-l1">—</div>
+          <div class="kpi-sub">requieren atención</div>
+        </div>
+        <div class="kpi orange">
+          <div class="kpi-label">Colaboradores</div>
+          <div class="kpi-value" id="kpi-colab">—</div>
+          <div class="kpi-sub">registrados</div>
+        </div>
+        <div class="kpi blue">
+          <div class="kpi-label">Áreas Activas</div>
+          <div class="kpi-value" id="kpi-areas">—</div>
+          <div class="kpi-sub">con procesos</div>
+        </div>
+      </div>
+
+      <div class="charts-row">
+        <div class="chart-card">
+          <div class="chart-title">Distribución por nivel de madurez</div>
+          <div class="chart-wrap"><canvas id="chartMadurez"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Procesos por área</div>
+          <div class="chart-wrap"><canvas id="chartAreas"></canvas></div>
+        </div>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-header-title">Resumen por área</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Área</th><th>Procesos</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>Madurez Prom.</th><th>Distribución</th>
+          </tr></thead>
+          <tbody id="tbody-areas"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- CONSULTA RÁPIDA -->
+    <div id="view-consulta" class="view">
+      <div class="view-title">Consulta Rápida</div>
+      <div class="view-sub">Busca cualquier proceso y ve su estado de documentación al instante</div>
+
+      <div class="consulta-input-wrap">
+        <input class="consulta-input" id="consulta-q" placeholder="Ej: Egreso, Reembolso, Vaciado de Clientes..." oninput="renderConsulta()" autocomplete="off">
+        <div class="consulta-hint">Busca por nombre, responsable, área o código. Los campos vacíos indican qué falta documentar.</div>
+      </div>
+
+      <div class="consulta-results" id="consulta-results">
+        <div class="consulta-empty">
+          <div class="consulta-empty-icon">🔍</div>
+          <div>Escribe el nombre de un proceso para consultar</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- PROCESOS -->
+    <div id="view-procesos" class="view">
+      <div class="view-title">Procesos</div>
+      <div class="view-sub">Catálogo completo de procesos documentados</div>
+
+      <div class="filters">
+        <input class="search-bar" id="search-proc" placeholder="🔍  Buscar proceso, responsable..." oninput="renderProcesos()">
+        <select class="filter" id="fil-area" onchange="renderProcesos()">
+          <option value="">Todas las áreas</option>
+          <option value="OP">Operaciones</option>
+          <option value="CX">CX</option>
+          <option value="FIN">Finanzas</option>
+          <option value="COM">Comercial</option>
+          <option value="GP">Gestión de Personas</option>
+          <option value="CTRL">Proyectos</option>
+          <option value="LOG">Logística</option>
+          <option value="IT">TI</option>
+          <option value="MKT">Marketing</option>
+        </select>
+        <select class="filter" id="fil-nivel" onchange="renderProcesos()">
+          <option value="">Todos los niveles</option>
+          <option value="1">L1 — Incompleto</option>
+          <option value="2">L2 — Completo</option>
+          <option value="3">L3 — Auditable</option>
+          <option value="4">L4 — Auto-contenido</option>
+        </select>
+        <select class="filter" id="fil-tipo" onchange="renderProcesos()">
+          <option value="">Todos los tipos</option>
+          <option value="Documentado">Documentado</option>
+          <option value="Checklist">Checklist</option>
+          <option value="Capacitación">Capacitación</option>
+          <option value="Formulario">Formulario</option>
+          <option value="Plantilla">Plantilla</option>
+        </select>
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-header-title" id="proc-count">Procesos</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Código</th><th>Nombre</th><th>Área</th><th>Responsable</th><th>Nivel</th><th>Estado</th><th>Actualizado</th>
+          </tr></thead>
+          <tbody id="tbody-procesos"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- COLABORADORES -->
+    <div id="view-colaboradores" class="view">
+      <div class="view-title">Colaboradores</div>
+      <div class="view-sub">Personas registradas en el sistema</div>
+
+      <div class="filters">
+        <input class="search-bar" id="search-colab" placeholder="🔍  Buscar nombre, cargo..." oninput="renderColaboradores()">
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-header-title" id="colab-count">Colaboradores</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>Nombre</th><th>Cargo</th><th>Función 1</th><th>Función 2</th><th>Función 3</th>
+          </tr></thead>
+          <tbody id="tbody-colaboradores"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- FUNCIONES -->
+    <div id="view-funciones" class="view">
+      <div class="view-title">Funciones</div>
+      <div class="view-sub">Catálogo de roles y funciones organizacionales</div>
+
+      <div class="filters">
+        <input class="search-bar" id="search-func" placeholder="🔍  Buscar función, área..." oninput="renderFunciones()">
+      </div>
+
+      <div class="table-card">
+        <div class="table-header">
+          <span class="table-header-title" id="func-count">Funciones</span>
+        </div>
+        <table>
+          <thead><tr>
+            <th>#</th><th>Función</th><th>Descripción</th><th>Área</th><th>Depende de</th>
+          </tr></thead>
+          <tbody id="tbody-funciones"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- DETAIL PANEL -->
+<div class="detail-overlay" id="detail-overlay" onclick="closeDetail(event)">
+  <div class="detail-panel" id="detail-panel">
+    <button class="detail-close" onclick="document.getElementById('detail-overlay').classList.remove('open')">✕</button>
+    <button class="detail-pdf-btn" onclick="descargarFicha()" title="Descargar ficha PDF">⬇ Ficha PDF</button>
+    <div id="detail-content"></div>
+  </div>
+</div>
+
+<script type="module">
+import { db, auth } from "/shared/auth.js";
+import { collection, getDocs, getDoc, doc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { signInWithPopup, OAuthProvider, GoogleAuthProvider, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+// Providers (auth ya inicializado en shared/auth.js)
+const msProvider = new OAuthProvider('microsoft.com');
+msProvider.setCustomParameters({ tenant: 'recibelo.cl' });
+const googleProvider = new GoogleAuthProvider();
+
+window._data = { procesos: [], colaboradores: [], funciones: [], areas: [] };
+let _userRoles = [];
+
+// AUTH ACTIONS (exposed globally)
+async function fetchUserRoles(user) {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'acceso'));
+    if (!snap.exists()) { _userRoles = ['controller']; return; }
+    const data = snap.data();
+    const email = (user.email || '').toLowerCase();
+    if (data.roles) {
+      const key = Object.keys(data.roles).find(k => k.toLowerCase() === email);
+      _userRoles = key ? (data.roles[key] || []) : [];
+    } else {
+      const emails = (data.emails || []).map(e => e.toLowerCase());
+      _userRoles = emails.includes(email) ? ['controller'] : [];
+    }
+  } catch(e) { _userRoles = []; }
+}
+
+function aplicarRolesSidebar() {
+  const linkFinanzas = document.getElementById('sidebar-finanzas');
+  if (!linkFinanzas) return;
+  if (_userRoles.includes('operacional') || _userRoles.includes('admin')) {
+    const lo=document.getElementById('sidebar-operacional');if(lo){lo.style.opacity='1';lo.style.cursor='pointer';}
+  }
+  if (_userRoles.includes('finanzas') || _userRoles.includes('admin')) {
+    linkFinanzas.removeAttribute('style');
+    linkFinanzas.setAttribute('href', '/finanzas');
+    linkFinanzas.innerHTML = '💰 Finanzas';
+  } else {
+    linkFinanzas.style.cssText = 'opacity:0.35;cursor:not-allowed;pointer-events:none';
+    linkFinanzas.removeAttribute('href');
+    linkFinanzas.innerHTML = '💰 Finanzas <span style="font-size:10px;color:var(--muted)">(pronto)</span>';
+  }
+}
+
+async function verificarAcceso(user) {
+  await fetchUserRoles(user);
+  return _userRoles.includes('controller') || _userRoles.includes('admin') || _userRoles.length === 0;
+}
+
+async function doLogin(provider) {
+  document.getElementById('login-error').textContent = '';
+  try {
+    const result = await signInWithPopup(auth, provider);
+    const ok = await verificarAcceso(result.user);
+    if (!ok) {
+      await signOut(auth);
+      document.getElementById('login-error').textContent = 'Acceso no autorizado. Contacta a Jota para solicitar acceso.';
+    }
+  } catch(e) {
+    const msgs = {
+      'auth/popup-closed-by-user': 'Cerraste la ventana antes de completar el inicio de sesión.',
+      'auth/cancelled-popup-request': '',
+      'auth/account-exists-with-different-credential': 'Esta cuenta ya está registrada con otro método.',
+    };
+    if (e.code !== 'auth/cancelled-popup-request')
+      document.getElementById('login-error').textContent = msgs[e.code] || 'Error: ' + e.message;
+  }
+}
+
+window.signInWithMicrosoft = () => doLogin(msProvider);
+window.signInWithGoogle    = () => doLogin(googleProvider);
+
+window.doSignOut = async function() {
+  if (confirm('¿Cerrar sesión?')) await signOut(auth);
+};
+
+const AREA_NOMBRES = {
+  OP:"Operaciones", CX:"CX", FIN:"Finanzas", COM:"Comercial",
+  GP:"Gest. Personas", CTRL:"Proyectos", LOG:"Logística", IT:"TI", MKT:"Marketing"
+};
+
+const NIVEL_LABELS = { 0:"—", 1:"L1", 2:"L2", 3:"L3", 4:"L4" };
+const NIVEL_CLASSES = { 0:"badge-na", 1:"badge-l1", 2:"badge-l2", 3:"badge-l3", 4:"badge-l4" };
+
+async function loadAll() {
+  const cols = ["procesos","colaboradores","funciones","areas"];
+  for (const col of cols) {
+    const snap = await getDocs(collection(db, col));
+    window._data[col] = snap.docs.map(d => ({id: d.id, ...d.data()}));
+  }
+}
+
+function badge(nivel) {
+  return `<span class="badge ${NIVEL_CLASSES[nivel]||'badge-na'}">${NIVEL_LABELS[nivel]||'—'}</span>`;
+}
+
+function truncate(s, n=45) { return s && s.length > n ? s.slice(0,n)+'…' : (s||''); }
+
+// DASHBOARD
+function buildDashboard() {
+  const p = window._data.procesos;
+  const byNivel = {1:0,2:0,3:0,4:0};
+  p.forEach(x => { if(x.nivel_madurez) byNivel[x.nivel_madurez]=(byNivel[x.nivel_madurez]||0)+1; });
+  const total = p.length;
+  const sum = p.reduce((a,x)=>a+(x.nivel_madurez||0),0);
+  const avg = total ? (sum/total).toFixed(1) : 0;
+  const l3l4 = (byNivel[3]||0)+(byNivel[4]||0);
+  const areasConProc = new Set(p.map(x=>x.area_id)).size;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-avg').textContent = avg;
+  document.getElementById('kpi-l3l4').textContent = l3l4;
+  document.getElementById('kpi-l1').textContent = byNivel[1]||0;
+  document.getElementById('kpi-colab').textContent = window._data.colaboradores.length;
+  document.getElementById('kpi-areas').textContent = areasConProc;
+
+  // Chart madurez
+  new Chart(document.getElementById('chartMadurez'), {
+    type: 'doughnut',
+    data: {
+      labels: ['L1 Incompleto','L2 Completo','L3 Auditable','L4 Auto-contenido'],
+      datasets: [{ data: [byNivel[1]||0,byNivel[2]||0,byNivel[3]||0,byNivel[4]||0],
+        backgroundColor: ['#ef4444','#f59e0b','#3b82f6','#22c55e'],
+        borderWidth: 0, hoverOffset: 6 }]
+    },
+    options: { responsive:true, maintainAspectRatio:false, plugins:{
+      legend:{ position:'bottom', labels:{color:'#94a3b8',font:{size:11},boxWidth:12,padding:12} }
+    }}
+  });
+
+  // Chart áreas
+  const byArea = {};
+  p.forEach(x => { byArea[x.area_id]=(byArea[x.area_id]||0)+1; });
+  const areaKeys = Object.keys(AREA_NOMBRES);
+  new Chart(document.getElementById('chartAreas'), {
+    type: 'bar',
+    data: {
+      labels: areaKeys.map(k=>AREA_NOMBRES[k]),
+      datasets:[{ data: areaKeys.map(k=>byArea[k]||0),
+        backgroundColor:'rgba(255,107,53,0.7)', borderRadius:4, borderSkipped:false }]
+    },
+    options:{ responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}},
+      scales:{
+        x:{ticks:{color:'#64748b',font:{size:10}},grid:{display:false}},
+        y:{ticks:{color:'#64748b',font:{size:10},stepSize:1},grid:{color:'rgba(255,255,255,0.04)'}}
+      }
+    }
+  });
+
+  // Tabla por área
+  const tbody = document.getElementById('tbody-areas');
+  tbody.innerHTML = '';
+  Object.entries(AREA_NOMBRES).forEach(([codigo, nombre]) => {
+    const procs = p.filter(x=>x.area_id===codigo);
+    if (!procs.length) {
+      tbody.innerHTML += `<tr>
+        <td><span class="badge badge-area">${codigo}</span> ${nombre}</td>
+        <td style="color:var(--muted)">0</td>
+        <td>—</td><td>—</td><td>—</td><td>—</td>
+        <td style="color:var(--muted)">sin datos</td>
+        <td><div class="area-progress"><div class="area-progress-bar" style="width:0%"></div></div></td>
+      </tr>`; return;
+    }
+    const c = {1:0,2:0,3:0,4:0};
+    procs.forEach(x=>{ if(x.nivel_madurez) c[x.nivel_madurez]=(c[x.nivel_madurez]||0)+1; });
+    const promArea = (procs.reduce((a,x)=>a+(x.nivel_madurez||0),0)/procs.length).toFixed(1);
+    const pct = Math.round((parseFloat(promArea)/4)*100);
+    const color = parseFloat(promArea)>=3?'var(--l4)':parseFloat(promArea)>=2?'var(--l2)':'var(--l1)';
+    tbody.innerHTML += `<tr>
+      <td><span class="badge badge-area">${codigo}</span> ${nombre}</td>
+      <td><strong>${procs.length}</strong></td>
+      <td style="color:var(--l1)">${c[1]||0}</td>
+      <td style="color:var(--l2)">${c[2]||0}</td>
+      <td style="color:var(--l3)">${c[3]||0}</td>
+      <td style="color:var(--l4)">${c[4]||0}</td>
+      <td><strong style="color:${color}">${promArea}</strong></td>
+      <td style="width:100px"><div class="area-progress"><div class="area-progress-bar" style="width:${pct}%;background:${color}"></div></div></td>
+    </tr>`;
+  });
+}
+
+// PROCESOS
+window.renderProcesos = function() {
+  const q = (document.getElementById('search-proc').value||'').toLowerCase();
+  const fa = document.getElementById('fil-area').value;
+  const fn = document.getElementById('fil-nivel').value;
+  const ft = document.getElementById('fil-tipo').value;
+  let list = window._data.procesos;
+  if (fa) list = list.filter(x=>x.area_id===fa);
+  if (fn) list = list.filter(x=>String(x.nivel_madurez)===fn);
+  if (ft) list = list.filter(x=>(x.estado||'').toLowerCase().includes(ft.toLowerCase()));
+  if (q) list = list.filter(x=>
+    (x.nombre||'').toLowerCase().includes(q) ||
+    (x.responsable||'').toLowerCase().includes(q) ||
+    (x.codigo||'').toLowerCase().includes(q) ||
+    (x.observaciones||'').toLowerCase().includes(q)
+  );
+  document.getElementById('proc-count').textContent = `${list.length} procesos`;
+  const tbody = document.getElementById('tbody-procesos');
+  if (!list.length) { tbody.innerHTML=`<tr><td colspan="7" class="empty">Sin resultados</td></tr>`; return; }
+  tbody.innerHTML = list.map(p=>`
+    <tr style="cursor:pointer" onclick="openDetail('${p.id}')">
+      <td><code style="color:var(--orange);font-size:11px">${p.codigo||p.id}</code></td>
+      <td>${truncate(p.nombre,50)}</td>
+      <td><span class="badge badge-area">${p.area_id}</span></td>
+      <td style="color:var(--muted2);font-size:12px">${truncate(p.responsable,30)}</td>
+      <td>${badge(p.nivel_madurez)}</td>
+      <td style="color:var(--muted);font-size:12px">${p.estado||'—'}</td>
+      <td style="color:var(--muted);font-size:12px">${p.fecha_modificacion||'—'}</td>
+    </tr>`).join('');
+};
+
+// COLABORADORES
+window.renderColaboradores = function() {
+  const q = (document.getElementById('search-colab').value||'').toLowerCase();
+  let list = window._data.colaboradores;
+  if (q) list = list.filter(x=>
+    (x.nombre_completo||'').toLowerCase().includes(q) ||
+    (x.cargo||'').toLowerCase().includes(q) ||
+    (x.funcion_1||'').toLowerCase().includes(q)
+  );
+  document.getElementById('colab-count').textContent = `${list.length} colaboradores`;
+  const tbody = document.getElementById('tbody-colaboradores');
+  if (!list.length) { tbody.innerHTML=`<tr><td colspan="5" class="empty">Sin resultados</td></tr>`; return; }
+  tbody.innerHTML = list.map(c=>`
+    <tr>
+      <td><strong>${c.nombre_completo||''}</strong></td>
+      <td style="font-size:12px;color:var(--muted2)">${c.cargo||'—'}</td>
+      <td style="font-size:12px">${c.funcion_1||'—'}</td>
+      <td style="font-size:12px;color:var(--muted2)">${c.funcion_2||'—'}</td>
+      <td style="font-size:12px;color:var(--muted2)">${c.funcion_3||'—'}</td>
+    </tr>`).join('');
+};
+
+// FUNCIONES
+window.renderFunciones = function() {
+  const q = (document.getElementById('search-func').value||'').toLowerCase();
+  let list = window._data.funciones.sort((a,b)=>(a.numero||0)-(b.numero||0));
+  if (q) list = list.filter(x=>
+    (x.funcion||'').toLowerCase().includes(q) ||
+    (x.area||'').toLowerCase().includes(q) ||
+    (x.descripcion||'').toLowerCase().includes(q)
+  );
+  document.getElementById('func-count').textContent = `${list.length} funciones`;
+  const tbody = document.getElementById('tbody-funciones');
+  tbody.innerHTML = list.map(f=>`
+    <tr>
+      <td style="color:var(--muted);font-size:12px">${f.numero||''}</td>
+      <td><strong style="font-size:13px">${f.funcion||''}</strong></td>
+      <td style="font-size:12px;color:var(--muted2);max-width:280px">${truncate(f.descripcion,80)}</td>
+      <td><span class="badge badge-area" style="font-size:10px">${f.area||'—'}</span></td>
+      <td style="font-size:12px;color:var(--muted2)">${f.depende_de||'—'}</td>
+    </tr>`).join('');
+};
+
+// CONSULTA RÁPIDA
+// CONSULTA RÁPIDA
+window.renderConsulta = function() {
+  const q = (document.getElementById('consulta-q').value||'').trim().toLowerCase();
+  const container = document.getElementById('consulta-results');
+  if (!q) {
+    container.innerHTML = `<div class="consulta-empty"><div class="consulta-empty-icon">🔍</div><div>Escribe el nombre de un proceso para consultar</div></div>`;
+    return;
+  }
+  const NIVEL_LABELS = {0:'—',1:'L1',2:'L2',3:'L3',4:'L4'};
+  const NIVEL_CLASSES = {0:'badge-na',1:'badge-l1',2:'badge-l2',3:'badge-l3',4:'badge-l4'};
+  const GAP_MSG = {
+    1: '⚠ Proceso en L1: falta estructura formal (objetivo, alcance, responsables, criterios). Solicitar al responsable que complete la plantilla estándar.',
+    2: '📋 Proceso en L2: operativo pero sin versionado ni evidencias formales. Puede subir a L3 con código, versión y criterios de aceptación.',
+    3: '🔎 Proceso en L3: auditable. Para llegar a L4 agregar definiciones, excepciones, sistemas/accesos y KPIs medibles.',
+  };
+  let results = window._data.procesos.filter(p =>
+    (p.nombre||'').toLowerCase().includes(q) ||
+    (p.responsable||'').toLowerCase().includes(q) ||
+    (p.area_id||'').toLowerCase().includes(q) ||
+    (p.codigo||'').toLowerCase().includes(q) ||
+    (p.observaciones||'').toLowerCase().includes(q) ||
+    (p.area_nombre||'').toLowerCase().includes(q)
+  );
+  if (!results.length) {
+    container.innerHTML = `<div class="consulta-empty"><div class="consulta-empty-icon">😶</div><div>Sin resultados para "<strong>${q}</strong>"</div><div style="font-size:12px;margin-top:8px;color:var(--muted)">Intenta con otra palabra clave o revisa el catálogo completo en Procesos.</div></div>`;
+    return;
+  }
+  results.sort((a,b) => {
+    const aExact = (a.nombre||'').toLowerCase().startsWith(q) ? 0 : 1;
+    const bExact = (b.nombre||'').toLowerCase().startsWith(q) ? 0 : 1;
+    if (aExact !== bExact) return aExact - bExact;
+    return (b.nivel_madurez||0) - (a.nivel_madurez||0);
+  });
+  const field = (label, val) => {
+    const isEmpty = !val || val === '—' || val.trim() === '';
+    return `<div class="consulta-field">
+      <div class="consulta-field-label">${label}</div>
+      <div class="consulta-field-val ${isEmpty?'empty':''}">${isEmpty ? 'Sin registrar' : val}</div>
+    </div>`;
+  };
+  container.innerHTML = results.map(p => {
+    const nivel = p.nivel_madurez || 0;
+    const link = p.ubicacion_doc ? `<a href="${p.ubicacion_doc}" target="_blank" style="color:var(--orange);font-size:12px;text-decoration:none">🔗 Ver documento</a>` : '';
+    const gapMsg = GAP_MSG[nivel] ? `<div class="consulta-gap">${GAP_MSG[nivel]}</div>` : '';
+    const obs = p.observaciones ? `<div class="consulta-obs">📝 ${p.observaciones}</div>` : '';
+    return `<div class="consulta-card">
+      <div class="consulta-card-header">
+        <div>
+          <div class="consulta-card-code">${p.codigo||p.id}</div>
+          <div class="consulta-card-title">${p.nombre||''}</div>
+        </div>
+        <div class="consulta-card-badges">
+          <span class="badge badge-area">${p.area_id}</span>
+          <span class="badge ${NIVEL_CLASSES[nivel]}">${NIVEL_LABELS[nivel]}</span>
+          ${link}
+        </div>
+      </div>
+      <div class="consulta-fields">
+        ${field('Responsable', p.responsable)}
+        ${field('Estado', p.estado)}
+        ${field('Versión', p.version)}
+        ${field('Última actualización', p.fecha_modificacion)}
+      </div>
+      ${obs}
+      ${gapMsg}
+    </div>`;
+  }).join('');
+};
+
+// DETAIL
+window.openDetail = function(id) {
+  window._fichaActual = id;
+  const p = window._data.procesos.find(x=>x.id===id);
+  if (!p) return;
+  const link = p.ubicacion_doc ? `<a class="detail-link" href="${p.ubicacion_doc}" target="_blank">🔗 Ver documento original</a>` : `<span style="color:var(--muted);font-size:12px">Sin enlace registrado</span>`;
+  document.getElementById('detail-content').innerHTML = `
+    <div class="detail-code">${p.codigo||p.id}</div>
+    <div class="detail-name">${p.nombre||''}</div>
+    <div class="detail-row"><span class="detail-key">Área</span><span class="detail-val"><span class="badge badge-area">${p.area_id}</span> ${p.area_nombre||''}</span></div>
+    <div class="detail-row"><span class="detail-key">Nivel madurez</span><span class="detail-val">${badge(p.nivel_madurez)} ${p.nivel_label||''}</span></div>
+    <div class="detail-row"><span class="detail-key">Responsable</span><span class="detail-val">${p.responsable||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Estado</span><span class="detail-val">${p.estado||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Versión</span><span class="detail-val">${p.version||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Archivo .md</span><span class="detail-val" style="color:var(--muted2);font-size:12px">${p.archivo_md||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Subcarpeta</span><span class="detail-val" style="color:var(--muted2);font-size:12px">${p.subcarpeta||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Últ. modificación</span><span class="detail-val">${p.fecha_modificacion||'—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Tamaño</span><span class="detail-val">${p.tamano_kb ? p.tamano_kb+' KB' : '—'}</span></div>
+    <div class="detail-row"><span class="detail-key">Doc. original</span><span class="detail-val">${link}</span></div>
+    ${p.observaciones ? `<div class="detail-obs">📝 ${p.observaciones}</div>` : ''}
+  `;
+  document.getElementById('detail-overlay').classList.add('open');
+};
+
+window.closeDetail = function(e) {
+  if (e.target === document.getElementById('detail-overlay'))
+    document.getElementById('detail-overlay').classList.remove('open');
+};
+
+window.descargarFicha = function() {
+  const id = window._fichaActual;
+  if (!id) return;
+  const p = window._data.procesos.find(x => x.id === id);
+  if (!p) return;
+
+  const NIVEL_LABELS = {0:'—',1:'L1 — Inicial',2:'L2 — Documentado',3:'L3 — Auditable',4:'L4 — Autosuficiente'};
+  const NIVEL_COLORS = {1:'#ef4444',2:'#f59e0b',3:'#3b82f6',4:'#22c55e'};
+  const GAP_MSG = {
+    1:'El proceso requiere estructura formal: objetivo, alcance, responsables y criterios de aceptación. Solicitar al responsable completar la plantilla estándar.',
+    2:'Proceso operativo pero sin versionado ni evidencias formales. Puede avanzar a L3 incorporando código, versión y criterios de aceptación documentados.',
+    3:'Proceso auditable. Para alcanzar L4 se deben agregar definiciones, excepciones, sistemas/accesos requeridos y KPIs medibles.',
+  };
+  const nivel = p.nivel_madurez || 0;
+  const color = NIVEL_COLORS[nivel] || '#64748b';
+  const hoy = new Date().toLocaleDateString('es-CL', {year:'numeric',month:'long',day:'numeric'});
+
+  const fila = (label, val) => val && val !== '—'
+    ? `<tr><td class="lbl">${label}</td><td class="val">${val}</td></tr>`
+    : `<tr><td class="lbl">${label}</td><td class="val vacio">Sin registrar</td></tr>`;
+
+  const html = `<!DOCTYPE html><html lang="es"><head>
+<meta charset="UTF-8">
+<title>Ficha — ${p.nombre||p.id}</title>
+<style>
+  @page { size: A4; margin: 2cm; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', system-ui, sans-serif; color: #1e293b; background: white; }
+  .header { display: flex; align-items: center; justify-content: space-between; padding-bottom: 20px; border-bottom: 3px solid #FF6B35; margin-bottom: 28px; }
+  .header-left { display: flex; flex-direction: column; gap: 4px; }
+  .brand { font-size: 13px; color: #64748b; font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+  .doc-type { font-size: 11px; color: #94a3b8; }
+  .badge-nivel { display: inline-block; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 700; color: white; background: ${color}; }
+  h1 { font-size: 22px; font-weight: 800; color: #0f172a; margin-bottom: 6px; line-height: 1.3; }
+  .codigo { font-size: 12px; color: #FF6B35; font-weight: 700; letter-spacing: 0.5px; margin-bottom: 12px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 24px; }
+  td { padding: 10px 14px; font-size: 13px; border-bottom: 1px solid #f1f5f9; vertical-align: top; }
+  .lbl { width: 38%; color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: 0.4px; }
+  .val { color: #1e293b; font-weight: 500; }
+  .vacio { color: #cbd5e1; font-style: italic; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.8px; color: #94a3b8; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 1px solid #e2e8f0; }
+  .obs-box { background: #f8fafc; border-left: 3px solid #3b82f6; border-radius: 4px; padding: 14px 16px; font-size: 13px; color: #334155; line-height: 1.6; margin-bottom: 24px; }
+  .gap-box { background: #fff7ed; border-left: 3px solid ${color}; border-radius: 4px; padding: 14px 16px; font-size: 13px; color: #7c3f00; line-height: 1.6; margin-bottom: 24px; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; font-size: 11px; color: #94a3b8; }
+  @media print { body { print-color-adjust: exact; -webkit-print-color-adjust: exact; } }
+</style>
+</head><body>
+<div class="header">
+  <div class="header-left">
+    <div class="brand">Recíbelo · Controller de Procesos</div>
+    <div class="doc-type">Ficha de Proceso</div>
+  </div>
+  <div class="badge-nivel">${NIVEL_LABELS[nivel]}</div>
+</div>
+
+<div class="codigo">${p.codigo||p.id}</div>
+<h1>${p.nombre||''}</h1>
+
+<div class="section-title" style="margin-top:20px">Información general</div>
+<table>
+  ${fila('Área', p.area_nombre || p.area_id)}
+  ${fila('Responsable', p.responsable)}
+  ${fila('Estado', p.estado)}
+  ${fila('Versión', p.version)}
+  ${fila('Última modificación', p.fecha_modificacion)}
+  ${fila('Archivo fuente', p.archivo_md)}
+  ${fila('Tamaño doc.', p.tamano_kb ? p.tamano_kb + ' KB' : null)}
+</table>
+
+${p.observaciones ? `<div class="section-title">Evaluación de madurez</div><div class="obs-box">${p.observaciones}</div>` : ''}
+${GAP_MSG[nivel] ? `<div class="section-title">Recomendación para avanzar</div><div class="gap-box">${GAP_MSG[nivel]}</div>` : ''}
+
+<div class="footer">
+  <span>Generado el ${hoy}</span>
+  <span>proyectos-ctrl.web.app — Uso interno Recíbelo</span>
+</div>
+
+<script>window.onload = () => window.print();<\/script>
+</body></html>`;
+
+  const win = window.open('', '_blank');
+  win.document.write(html);
+  win.document.close();
+};
+
+// NAV
+window.showView = function(name) {
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.querySelectorAll('nav a').forEach(a=>a.classList.remove('active'));
+  document.getElementById('view-'+name).classList.add('active');
+  event.target.classList.add('active');
+  if (name==='procesos') renderProcesos();
+  if (name==='colaboradores') renderColaboradores();
+  if (name==='funciones') renderFunciones();
+  if (name==='consulta') { document.getElementById('consulta-q').focus(); renderConsulta(); }
+};
+
+window.filterByArea = function(area) {
+  showView('procesos');
+  document.getElementById('fil-area').value = area;
+  renderProcesos();
+};
+
+// INIT — esperar estado de autenticación antes de cargar datos
+onAuthStateChanged(auth, async (user) => {
+  const loading = document.getElementById('loading');
+  const loginScreen = document.getElementById('login-screen');
+  const mainHeader = document.getElementById('main-header');
+  const mainLayout = document.getElementById('main-layout');
+
+  if (user) {
+    loginScreen.style.display = 'none';
+    loading.style.display = 'flex';
+    mainHeader.style.display = 'none';
+    mainLayout.style.display = 'none';
+
+    const initials = (user.displayName || user.email || '?').charAt(0).toUpperCase();
+    document.getElementById('user-avatar').textContent = initials;
+    document.getElementById('user-name').textContent = user.displayName || user.email;
+
+    try {
+      await loadAll();
+      await fetchUserRoles(user);
+      loading.style.display = 'none';
+      mainHeader.style.display = 'flex';
+      mainLayout.style.display = 'flex';
+      document.getElementById('last-update').textContent = 'Actualizado: ' + new Date().toLocaleDateString('es-CL');
+      aplicarRolesSidebar();
+      buildDashboard();
+    } catch(e) {
+      loading.innerHTML = `<div style="color:var(--l1);text-align:center">Error al conectar con Firebase:<br>${e.message}</div>`;
+    }
+  } else {
+    loading.style.display = 'none';
+    mainHeader.style.display = 'none';
+    mainLayout.style.display = 'none';
+    loginScreen.style.display = 'flex';
+  }
+});
+</script>
+</body>
+</html>

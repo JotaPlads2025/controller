@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Sync Tarifas Conductores — Recíbelo</title>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:system-ui,sans-serif;background:#0f1117;color:#e2e8f0;display:flex;align-items:center;justify-content:center;min-height:100vh}
+  .card{background:#1a1d27;border:1px solid #2a2f45;border-radius:16px;padding:40px;max-width:520px;width:100%;margin:20px}
+  h1{font-size:20px;margin-bottom:8px}
+  p{color:#94a3b8;font-size:14px;margin-bottom:20px;line-height:1.5}
+  .btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:13px 20px;border:1px solid #2a2f45;border-radius:10px;background:#2a2f45;color:#e2e8f0;font-size:14px;font-weight:600;cursor:pointer;margin-bottom:10px;transition:all .15s}
+  .btn:hover{border-color:#FF6B35;background:#333a55}
+  .btn-primary{background:#FF6B35;border-color:#FF6B35;color:#fff}
+  .btn-primary:hover{background:#ff8c5a;border-color:#ff8c5a}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  #log{margin-top:16px;font-size:12px;font-family:monospace;max-height:260px;overflow-y:auto;background:#0f1117;border-radius:8px;padding:12px;display:none}
+  .ok{color:#22c55e}.err{color:#ef4444}.info{color:#94a3b8}
+  .user-bar{display:flex;align-items:center;gap:10px;background:#0f1117;border-radius:10px;padding:10px 14px;margin-bottom:20px;font-size:13px}
+  .avatar{width:28px;height:28px;background:#FF6B35;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex-shrink:0}
+  #login-section{}
+  #sync-section{display:none}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>🚀 Sync Tarifas Conductores</h1>
+  <p>Sube las 35 comunas con sus tarifas Auto y Moto a <code>fin_tarifas</code> en Firestore. Requiere tu cuenta Recíbelo para escribir.</p>
+
+  <!-- LOGIN -->
+  <div id="login-section">
+    <button class="btn" id="btn-ms" onclick="loginMS()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Iniciar sesión con Microsoft
+    </button>
+    <button class="btn" id="btn-gg" onclick="loginGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Iniciar sesión con Google
+    </button>
+    <p style="font-size:12px;color:#64748b;margin-top:8px;margin-bottom:0">Solo cuentas autorizadas en Recíbelo pueden sincronizar.</p>
+  </div>
+
+  <!-- SYNC (post-login) -->
+  <div id="sync-section">
+    <div class="user-bar">
+      <div class="avatar" id="avatar-initials">J</div>
+      <div>
+        <div id="user-name" style="font-weight:600">—</div>
+        <div id="user-email" style="color:#64748b;font-size:12px">—</div>
+      </div>
+      <button onclick="logout()" style="margin-left:auto;background:none;border:none;color:#64748b;cursor:pointer;font-size:12px">Salir</button>
+    </div>
+    <button class="btn btn-primary" id="btn-sync" onclick="sincronizar()">Sincronizar 35 comunas con Firebase</button>
+  </div>
+
+  <div id="log"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, doc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getAuth, signInWithPopup, signOut, onAuthStateChanged,
+         OAuthProvider, GoogleAuthProvider } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+const app = initializeApp({
+  apiKey: "AIzaSyBXzxAnZZicHX-VoQDvcJ0rHqP3_pyu0-U",
+  authDomain: "proyectos-ctrl.firebaseapp.com",
+  projectId: "proyectos-ctrl",
+  storageBucket: "proyectos-ctrl.firebasestorage.app",
+  messagingSenderId: "87976835637",
+  appId: "1:87976835637:web:50ccffcbccd8e550c34f7c"
+});
+const db   = getFirestore(app);
+const auth = getAuth(app);
+
+function nk(s){ return String(s||"").toLowerCase().trim().normalize("NFD").replace(/[̀-ͯ]/g,""); }
+
+const TARIFAS = [
+  // 🔵 Azul claro — Auto $1.100 / Moto $1.000
+  { nombre:"Providencia",         zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Independencia",       zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Recoleta",            zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Renca",               zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Quinta Normal",       zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Lo Prado",            zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Conchalí",            zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  { nombre:"Huechuraba",          zona:"azul_claro",  a:[1100,1200,1400], m:[1000,1100,1300] },
+  // 🟠 Naranja — Auto $1.200 / Moto $1.000
+  { nombre:"Quilicura",           zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Vitacura",            zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Las Condes",          zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Estación Central",    zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"San Miguel",          zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Cerrillos",           zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"La Cisterna",         zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"San Joaquín",         zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Ñuñoa",               zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Santiago centro",     zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"La Reina",            zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Macul",               zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Maipú",               zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Lo Espejo",           zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Pedro Aguirre Cerda", zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"La Granja",           zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Pudahuel",            zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  { nombre:"Cerro Navia",         zona:"naranja",     a:[1200,1300,1500], m:[1000,1100,1300] },
+  // 🟡 Amarillo — Auto $1.300 / Moto $1.100
+  { nombre:"Lo Barnechea",        zona:"amarillo",    a:[1300,1400,1600], m:[1100,1200,1400] },
+  { nombre:"La Pintana",          zona:"amarillo",    a:[1300,1400,1600], m:[1100,1200,1400] },
+  { nombre:"El Bosque",           zona:"amarillo",    a:[1300,1400,1600], m:[1100,1200,1400] },
+  { nombre:"La Florida",          zona:"amarillo",    a:[1300,1400,1600], m:[1100,1200,1400] },
+  { nombre:"Peñalolén",           zona:"amarillo",    a:[1300,1400,1600], m:[1100,1200,1400] },
+  // 🔵 Azul oscuro — Auto $1.400 / Moto $1.200
+  { nombre:"Padre Hurtado",       zona:"azul_oscuro", a:[1400,1500,1700], m:[1200,1300,1500] },
+  { nombre:"San Ramón",           zona:"azul_oscuro", a:[1400,1500,1700], m:[1200,1300,1500] },
+  { nombre:"San Bernardo",        zona:"azul_oscuro", a:[1400,1500,1700], m:[1200,1300,1500] },
+  { nombre:"Puente Alto",         zona:"azul_oscuro", a:[1400,1500,1700], m:[1200,1300,1500] },
+  // 🩷 Colina — Auto $1.900 / Moto $1.400
+  { nombre:"Colina",              zona:"colina",      a:[1900,2000,2200], m:[1400,1500,1700] },
+];
+
+function log(msg, tipo="info"){
+  const d=document.getElementById("log");
+  d.style.display="block";
+  d.innerHTML+=`<div class="${tipo}">${msg}</div>`;
+  d.scrollTop=d.scrollHeight;
+}
+
+onAuthStateChanged(auth, user => {
+  if(user){
+    document.getElementById("login-section").style.display="none";
+    document.getElementById("sync-section").style.display="block";
+    document.getElementById("user-name").textContent=user.displayName||"Usuario";
+    document.getElementById("user-email").textContent=user.email||"";
+    document.getElementById("avatar-initials").textContent=(user.displayName||"U")[0].toUpperCase();
+  } else {
+    document.getElementById("login-section").style.display="block";
+    document.getElementById("sync-section").style.display="none";
+  }
+});
+
+window.loginMS = async function(){
+  try{
+    const p=new OAuthProvider("microsoft.com");
+    p.setCustomParameters({tenant:"recibelo.cl"});
+    await signInWithPopup(auth,p);
+  }catch(e){ alert("Error al iniciar sesión: "+e.message); }
+};
+
+window.loginGoogle = async function(){
+  try{
+    await signInWithPopup(auth, new GoogleAuthProvider());
+  }catch(e){ alert("Error al iniciar sesión: "+e.message); }
+};
+
+window.logout = async function(){
+  await signOut(auth);
+  document.getElementById("log").innerHTML="";
+  document.getElementById("log").style.display="none";
+};
+
+window.sincronizar = async function(){
+  const btn=document.getElementById("btn-sync");
+  btn.disabled=true; btn.textContent="Sincronizando...";
+  document.getElementById("log").innerHTML="";
+  log("Subiendo 35 comunas a fin_tarifas...");
+  try{
+    const bt=writeBatch(db);
+    TARIFAS.forEach(t=>{
+      bt.set(doc(db,"fin_tarifas",nk(t.nombre)),t);
+      log(`  → ${t.nombre} [${t.zona}]`);
+    });
+    await bt.commit();
+    log(`\n✅ ${TARIFAS.length} comunas sincronizadas correctamente.`,"ok");
+    log("Abre Finanzas → tab Tarifas para verificar y editar.","ok");
+    btn.textContent="✅ Listo — sincronizar de nuevo";
+    btn.disabled=false;
+  }catch(e){
+    log("❌ Error: "+e.message,"err");
+    btn.disabled=false;
+    btn.textContent="Reintentar";
+  }
+};
+</script>
+</body>
+</html>

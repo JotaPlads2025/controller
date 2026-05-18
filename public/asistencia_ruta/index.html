@@ -1,0 +1,758 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recibelo — Asistencia en Ruta</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117; --card: #1a1d27; --border: #2a2f45;
+    --orange: #FF6B35; --text: #e2e8f0; --muted: #64748b; --muted2: #94a3b8;
+    --rojo: #ef4444; --amarillo: #f59e0b; --verde: #22c55e;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: "Segoe UI", system-ui, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+
+  /* LOGIN */
+  #login-screen { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+  .login-card { background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 48px 40px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 24px 64px rgba(0,0,0,0.4); }
+  .login-sub { color: var(--muted2); font-size: 14px; margin-bottom: 36px; line-height: 1.5; }
+  .login-btn { display: flex; align-items: center; justify-content: center; gap: 12px; width: 100%; padding: 14px 20px; background: #2a2f45; border: 1px solid var(--border); border-radius: 10px; color: var(--text); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; margin-bottom: 10px; }
+  .login-btn:hover { background: #333a55; border-color: var(--orange); }
+  .login-divider { display: flex; align-items: center; gap: 10px; margin: 4px 0 14px; }
+  .login-divider span { font-size: 12px; color: var(--muted); }
+  .login-divider div { flex: 1; height: 1px; background: var(--border); }
+  .login-error { margin-top: 12px; color: var(--rojo); font-size: 13px; min-height: 18px; }
+  .login-footer { margin-top: 28px; font-size: 12px; color: var(--muted); }
+
+  /* HEADER */
+  header { background: var(--card); border-bottom: 1px solid var(--border); padding: 0 24px; height: 56px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 100; }
+  .logo { display: flex; align-items: center; gap: 10px; }
+  .header-right { display: flex; align-items: center; gap: 12px; }
+  .user-chip { display: flex; align-items: center; gap: 8px; background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 20px; padding: 5px 12px 5px 8px; cursor: pointer; transition: all 0.15s; }
+  .user-chip:hover { background: rgba(239,68,68,0.1); border-color: var(--rojo); }
+  .user-avatar { width: 26px; height: 26px; background: var(--orange); border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 12px; font-weight: 700; }
+  .user-name { font-size: 13px; color: var(--muted2); max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge-module { background: rgba(255,107,53,0.15); color: var(--orange); border: 1px solid rgba(255,107,53,0.3); border-radius: 6px; padding: 3px 10px; font-size: 11px; font-weight: 700; }
+
+  /* MAIN */
+  main { flex: 1; padding: 28px; max-width: 1400px; width: 100%; margin: 0 auto; }
+
+  /* UPLOAD ZONE */
+  #upload-zone { display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 320px; border: 2px dashed var(--border); border-radius: 16px; margin-bottom: 28px; cursor: pointer; transition: all 0.2s; text-align: center; padding: 40px; }
+  #upload-zone:hover, #upload-zone.drag-over { border-color: var(--orange); background: rgba(255,107,53,0.04); }
+  .upload-icon { font-size: 48px; margin-bottom: 16px; }
+  .upload-title { font-size: 20px; font-weight: 700; margin-bottom: 8px; }
+  .upload-sub { color: var(--muted2); font-size: 14px; margin-bottom: 24px; }
+  .upload-btn { background: var(--orange); color: white; border: none; border-radius: 10px; padding: 12px 28px; font-size: 14px; font-weight: 700; cursor: pointer; transition: all 0.15s; }
+  .upload-btn:hover { background: #ff8c5a; }
+  .upload-cols { font-size: 12px; color: var(--muted); margin-top: 16px; }
+  #file-input { display: none; }
+
+  /* RESUMEN GENERAL */
+  #resumen { display: none; margin-bottom: 24px; }
+  .resumen-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+  .resumen-titulo { font-size: 18px; font-weight: 700; }
+  .resumen-meta { font-size: 12px; color: var(--muted); }
+  .kpi-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .kpi { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
+  .kpi-label { font-size: 11px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+  .kpi-value { font-size: 28px; font-weight: 800; }
+  .kpi-sub { font-size: 11px; color: var(--muted); margin-top: 3px; }
+  .kpi.rojo { border-left: 3px solid var(--rojo); }
+  .kpi.amarillo { border-left: 3px solid var(--amarillo); }
+  .kpi.verde { border-left: 3px solid var(--verde); }
+  .kpi.orange { border-left: 3px solid var(--orange); }
+
+  /* PROGRESS BAR GLOBAL */
+  .global-progress { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; }
+  .progress-label { display: flex; justify-content: space-between; font-size: 13px; margin-bottom: 8px; }
+  .progress-track { background: rgba(255,255,255,0.06); border-radius: 99px; height: 10px; overflow: hidden; }
+  .progress-fill { height: 100%; border-radius: 99px; transition: width 0.5s; }
+
+  /* BOTONES ACCION */
+  .acciones { display: flex; gap: 10px; flex-wrap: wrap; }
+  .btn-nuevo { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-nuevo:hover { border-color: var(--orange); color: var(--orange); }
+  .btn-cierre { background: rgba(34,197,94,0.12); border: 1px solid rgba(34,197,94,0.3); color: var(--verde); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-cierre:hover { background: rgba(34,197,94,0.22); }
+  .btn-cierre:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-alarmas { background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3); color: var(--rojo); border-radius: 8px; padding: 8px 16px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-alarmas.active, .btn-alarmas:hover { background: rgba(239,68,68,0.2); }
+
+  /* CONDUCTORES GRID */
+  #conductores-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .conductor-card { background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 18px; border-left: 4px solid var(--border); transition: all 0.2s; }
+  .conductor-card.rojo { border-left-color: var(--rojo); }
+  .conductor-card.amarillo { border-left-color: var(--amarillo); }
+  .conductor-card.verde { border-left-color: var(--verde); }
+  .conductor-card:hover { transform: translateY(-1px); box-shadow: 0 4px 16px rgba(0,0,0,0.3); }
+  .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .conductor-nombre { font-weight: 700; font-size: 15px; line-height: 1.3; }
+  .conductor-comuna { font-size: 12px; color: var(--muted2); margin-top: 2px; }
+  .alarma-badge { display: flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; white-space: nowrap; flex-shrink: 0; }
+  .alarma-badge.rojo { background: rgba(239,68,68,0.15); color: var(--rojo); }
+  .alarma-badge.amarillo { background: rgba(245,158,11,0.15); color: var(--amarillo); }
+  .alarma-badge.verde { background: rgba(34,197,94,0.15); color: var(--verde); }
+  .card-stats { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+  .stat { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 8px 10px; text-align: center; }
+  .stat-val { font-size: 20px; font-weight: 800; }
+  .stat-label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.3px; margin-top: 2px; }
+  .card-progress { margin-bottom: 10px; }
+  .card-progress-track { background: rgba(255,255,255,0.06); border-radius: 99px; height: 6px; overflow: hidden; }
+  .card-progress-fill { height: 100%; border-radius: 99px; }
+  .card-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
+  .card-razon { font-size: 11px; color: var(--muted2); margin-top: 6px; font-style: italic; }
+  .eta { font-size: 12px; font-weight: 600; }
+  .eta.ok { color: var(--verde); }
+  .eta.warn { color: var(--amarillo); }
+  .eta.crit { color: var(--rojo); }
+
+
+  /* SIDEBAR */
+  .app-shell { display: flex; flex: 1; overflow: hidden; }
+  .sidebar { width: 220px; min-width: 220px; background: var(--card); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; overflow-y: auto; }
+  .sidebar-logo { padding: 4px 20px 20px; border-bottom: 1px solid var(--border); margin-bottom: 8px; }
+  .sidebar-logo img { height: 26px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 10px 20px; font-size: 13px; font-weight: 600; color: var(--muted2); text-decoration: none; cursor: pointer; border-left: 3px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: rgba(255,255,255,0.04); color: var(--text); }
+  .nav-item.active { color: var(--text); border-left-color: var(--orange); background: rgba(255,107,53,0.08); }
+  .nav-item.disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
+  .nav-section { padding: 14px 20px 6px; font-size: 10px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+  .nav-badge { font-size: 10px; background: rgba(255,255,255,0.08); border-radius: 4px; padding: 1px 6px; margin-left: auto; }
+  .app-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .app-content main { overflow-y: auto; }
+
+  /* VISTA LISTA */
+  .btn-vista { background: var(--card); border: 1px solid var(--border); color: var(--muted2); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.15s; }
+  .btn-vista.active, .btn-vista:hover { border-color: var(--orange); color: var(--orange); }
+  #conductores-lista { display: none; }
+  .lista-table { width: 100%; border-collapse: collapse; }
+  .lista-table th { text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: var(--muted); padding: 10px 14px; border-bottom: 1px solid var(--border); font-weight: 700; }
+  .lista-table td { padding: 9px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); font-size: 13px; vertical-align: middle; }
+  .lista-table tr:hover td { background: rgba(255,255,255,0.025); }
+  .lista-badge { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 700; }
+  .lista-badge.rojo  { background: rgba(239,68,68,0.15); color: var(--rojo); }
+  .lista-badge.amarillo { background: rgba(245,158,11,0.15); color: var(--amarillo); }
+  .lista-badge.verde { background: rgba(34,197,94,0.15); color: var(--verde); }
+  .mini-bar-track { background: rgba(255,255,255,0.06); border-radius: 99px; height: 5px; width: 80px; display: inline-block; vertical-align: middle; overflow: hidden; }
+  .mini-bar-fill  { height: 100%; border-radius: 99px; }
+  .lista-avance { display: flex; align-items: center; gap: 8px; }
+  .lista-pct { font-size: 12px; color: var(--muted2); width: 36px; }
+  /* LOADING */
+  #app-loading { display: none; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; gap: 16px; }
+  .spinner { width: 36px; height: 36px; border: 3px solid var(--border); border-top-color: var(--orange); border-radius: 50%; animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* FILTRO SOLO ALARMAS */
+  .hidden { display: none !important; }
+
+  /* DELTA PANEL — comparación entre cargas */
+  .delta-panel { background: rgba(255,107,53,0.06); border: 1px solid rgba(255,107,53,0.2); border-radius: 12px; padding: 14px 20px; margin-bottom: 16px; }
+  .delta-header { font-size: 12px; font-weight: 700; color: var(--orange); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .delta-items { display: flex; gap: 24px; flex-wrap: wrap; }
+  .delta-item { flex: 1; min-width: 140px; }
+  .delta-label { font-size: 11px; color: var(--muted2); text-transform: uppercase; letter-spacing: 0.4px; margin-bottom: 4px; }
+  .delta-valores { font-size: 15px; font-weight: 600; color: var(--text); }
+
+</style>
+</head>
+<body>
+
+<!-- LOADING -->
+<div id="app-loading">
+  <div class="spinner"></div>
+  <div style="color:var(--muted2);font-size:14px">Verificando acceso...</div>
+</div>
+
+<!-- LOGIN -->
+<div id="login-screen" style="display:none">
+  <div class="login-card">
+    <img src="/logo.png" alt="Recibelo" style="height:52px;margin:0 auto 20px;display:block">
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">Asistencia en Ruta</div>
+    <div class="login-sub">Monitor de conductores para equipo de cierre.<br>Ingresa con tu cuenta corporativa.</div>
+    <button class="login-btn" onclick="signInMS()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Continuar con Microsoft
+    </button>
+    <div class="login-divider"><div></div><span>o</span><div></div></div>
+    <button class="login-btn" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"/><path fill="#4285F4" d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"/><path fill="#FBBC05" d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"/><path fill="#34A853" d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.18 1.48-4.97 2.31-8.16 2.31-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+    <div class="login-footer">Solo usuarios autorizados por Recibelo</div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app" style="display:none; flex-direction:column; flex:1">
+  <header>
+    <div class="logo">
+      <img src="/logo.png" alt="Recibelo" style="height:28px">
+      <span class="badge-module">Asistencia en Ruta</span>
+    </div>
+    <div class="header-right">
+      <span id="header-hora" style="font-size:12px;color:var(--muted)"></span>
+      <div class="user-chip" onclick="doSignOut()" title="Cerrar sesion">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span class="user-name" id="user-name"></span>
+        <span style="font-size:11px;color:var(--muted)">salir</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <!-- SIDEBAR -->
+    <nav class="sidebar">
+
+      <div class="nav-section">Módulos</div>
+      <a id="nav-controller" href="/" class="nav-item" style="border-left-color:var(--orange)">
+        📋 <span>Controller</span>
+      </a>
+      <a href="/asistencia_ruta" class="nav-item active">
+        🚚 <span>Asistencia Ruta</span>
+      </a>
+      <a id="nav-operacional" href="/operacional" class="nav-item">
+        ⚙️ <span>Operacional</span>
+      </a>
+      <a id="nav-finanzas" href="/finanzas" class="nav-item" style="display:none">💰 <span>Finanzas</span></a>
+    </nav>
+
+    <!-- MAIN CONTENT -->
+    <div class="app-content">
+  <main>
+    <!-- UPLOAD ZONE -->
+    <div id="upload-zone" onclick="document.getElementById('file-input').click()"
+         ondragover="ev=>{ev.preventDefault();document.getElementById('upload-zone').classList.add('drag-over')}"
+         ondragleave="document.getElementById('upload-zone').classList.remove('drag-over')"
+         ondrop="handleDrop(event)">
+      <div class="upload-icon">📂</div>
+      <div class="upload-title">Subir Excel de rutas</div>
+      <div class="upload-sub">Arrastra el archivo aqui o haz clic para buscarlo</div>
+      <button class="upload-btn" onclick="event.stopPropagation();document.getElementById('file-input').click()">Seleccionar archivo</button>
+      <div class="upload-cols">Columnas requeridas: Cliente · Comuna · Nombre conductor Egreso · Hora entrega</div>
+    </div>
+    <input type="file" id="file-input" accept=".xlsx,.xls" onchange="handleFile(this.files[0])">
+
+    <!-- RESUMEN -->
+    <div id="resumen">
+      <div class="resumen-header">
+        <div>
+          <div class="resumen-titulo" id="resumen-titulo">Cargando...</div>
+          <div class="resumen-meta" id="resumen-meta"></div>
+        </div>
+        <div class="acciones">
+          <button class="btn-alarmas" id="btn-alarmas" onclick="toggleSoloAlarmas()">🔴 Solo con alarmas</button>
+          <button class="btn-vista active" id="btn-cards" onclick="setVista('cards')">🃏 Cards</button>
+          <button class="btn-vista" id="btn-lista" onclick="setVista('lista')">📋 Lista</button>
+          <button class="btn-nuevo" onclick="resetUpload()">📂 Nuevo Excel</button>
+          <button class="btn-cierre" id="btn-cierre" onclick="cerrarDia()">🏁 Cerrar día</button>
+        </div>
+      </div>
+      <div id="delta-panel" style="display:none"></div>
+      <div class="kpi-row">
+        <div class="kpi orange"><div class="kpi-label">Conductores</div><div class="kpi-value" id="kpi-conductores">—</div></div>
+        <div class="kpi orange"><div class="kpi-label">Total pedidos</div><div class="kpi-value" id="kpi-total">—</div></div>
+        <div class="kpi verde"><div class="kpi-label">Entregados</div><div class="kpi-value" id="kpi-entregados">—</div><div class="kpi-sub" id="kpi-pct">—</div></div>
+        <div class="kpi rojo"><div class="kpi-label">En Curso</div><div class="kpi-value" id="kpi-pendientes">—</div><div class="kpi-sub">sin entregar</div></div>
+        <div class="kpi rojo"><div class="kpi-label">ROJO</div><div class="kpi-value" id="kpi-rojo">—</div><div class="kpi-sub">requieren atencion</div></div>
+        <div class="kpi amarillo"><div class="kpi-label">AMARILLO</div><div class="kpi-value" id="kpi-amarillo">—</div><div class="kpi-sub">atencion preventiva</div></div>
+      </div>
+      <div class="global-progress">
+        <div class="progress-label">
+          <span style="font-weight:600">Avance general de entregas</span>
+          <span id="pct-label" style="font-weight:700">0%</span>
+        </div>
+        <div class="progress-track">
+          <div class="progress-fill" id="progress-fill" style="width:0%;background:var(--orange)"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- GRID CONDUCTORES -->
+    <div id="conductores-grid"></div>
+
+    <!-- LISTA CONDUCTORES -->
+    <div id="conductores-lista">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <table class="lista-table" id="lista-table">
+          <thead>
+            <tr>
+              <th>#</th>
+              <th>Conductor</th>
+              <th>Comuna</th>
+              <th>Avance</th>
+              <th>Estado</th>
+              <th>Velocidad</th>
+              <th>Hora est. término</th>
+              <th>Motivo</th>
+            </tr>
+          </thead>
+          <tbody id="lista-body"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+    </div><!-- /.app-content -->
+  </div><!-- /.app-shell -->
+</div>
+
+<script type="module">
+import { db, setupAuth } from "/shared/auth.js";
+import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// --- AUTH (gestionado por /shared/auth.js) ---
+setupAuth({
+  modulo: "asistencia_ruta",
+  onReady: async (user, roles) => {
+    actualizarReloj();
+    setInterval(actualizarReloj, 30000);
+  }
+});
+
+function actualizarReloj() {
+  document.getElementById("header-hora").textContent =
+    new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" }) + " hrs";
+}
+
+// --- EXCEL PROCESSING ---
+window.handleDrop = function(ev) {
+  ev.preventDefault();
+  document.getElementById("upload-zone").classList.remove("drag-over");
+  const file = ev.dataTransfer.files[0];
+  if (file) handleFile(file);
+};
+
+window.handleFile = function(file) {
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, { type: "binary", cellDates: true });
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rawData = XLSX.utils.sheet_to_json(ws, { raw: false });
+      // Normalizar nombres de columna: trim + colapsar espacios internos
+      const data = rawData.map(row => {
+        const clean = {};
+        Object.entries(row).forEach(([k, v]) => {
+          clean[k.trim().replace(/\s+/g, " ")] = v;
+        });
+        return clean;
+      });
+      procesarDatos(data, file.name);
+    } catch(err) {
+      alert("Error al leer el Excel: " + err.message);
+    }
+  };
+  reader.readAsBinaryString(file);
+};
+
+function procesarDatos(rows, filename) {
+  const cols = Object.keys(rows[0] || {});
+
+  // Columnas fijas requeridas
+  const fijas = ["Cliente", "Comuna", "Nombre conductor Egreso"];
+  const faltanFijas = fijas.filter(c => !cols.includes(c));
+  if (faltanFijas.length) {
+    alert("Columnas faltantes en el Excel:\n" + faltanFijas.join(", ") + "\n\nColumnas encontradas:\n" + cols.join(", "));
+    return;
+  }
+
+  // Estado sistema: "Completado" = entregado. Resto = pendiente.
+  const colEstado = cols.find(c => c.trim() === "Estado sistema") || null;
+  // Hora entrega: timestamp real de entrega para calcular velocidad
+  const variantesHora = ["Hora entrega", "Hora Entrega"];
+  const colHora = variantesHora.find(v => cols.includes(v)) || null;
+  if (!colEstado) {
+    alert("No encontré la columna 'Estado sistema'.\n\nColumnas disponibles:\n" + cols.join(", "));
+    return;
+  }
+
+  const conductores = {};
+  rows.forEach(row => {
+    const nombre = (row["Nombre conductor Egreso"] || "").trim();
+    if (!nombre) return;
+    // Conductores excluidos de la medición
+    const EXCLUIDOS = [
+      "phero kenneth meier", "bodega externa",
+      "turbo eduardo jesús valdés espinoza", "turbo eduardo jesus valdes espinoza",
+      "turbo eduardo baeza"
+    ];
+    if (EXCLUIDOS.some(e => nombre.toLowerCase().includes(e))) return;
+    if (!conductores[nombre]) {
+      conductores[nombre] = { total: 0, entregados: 0, comunas: {}, timestamps: [] };
+    }
+    const estadoRaw = String(row[colEstado] || "").trim();
+    const estadoLow = estadoRaw.toLowerCase();
+    // Solo contar En Curso y Completado — No Completado y Cancelado salen de la ecuación
+    if (estadoLow === "no completado" || estadoLow === "cancelado" || estadoLow === "no_completado") return;
+    conductores[nombre].total++;
+    const entregado = estadoLow === "completado";
+    if (entregado) {
+      conductores[nombre].entregados++;
+      // Guardar timestamp real de entrega para calcular velocidad
+      if (colHora && row[colHora]) {
+        const tsStr = String(row[colHora]).trim();
+        if (tsStr && tsStr !== "null" && tsStr !== "NaT" && tsStr !== "") {
+          // Intentar parsear cualquier formato: HH:MM, HH:MM:SS, fecha completa, serial Excel
+          let parsed = null;
+          // Formato con hora: buscar HH:MM en cualquier parte del string
+          const matchHora = tsStr.match(/(\d{1,2}):(\d{2})(?::(\d{2}))?/);
+          if (matchHora) {
+            const d = new Date();
+            d.setHours(parseInt(matchHora[1]), parseInt(matchHora[2]), parseInt(matchHora[3]||0), 0);
+            parsed = d.getTime();
+          } else {
+            // Intentar como Date genérico
+            const d = new Date(tsStr);
+            if (!isNaN(d.getTime())) parsed = d.getTime();
+          }
+          if (parsed) conductores[nombre].timestamps.push(parsed);
+        }
+      }
+    }
+    const comuna = (row["Comuna"] || "Sin datos").trim();
+    conductores[nombre].comunas[comuna] = (conductores[nombre].comunas[comuna] || 0) + 1;
+  });
+
+  const timestamp = new Date().toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+  const ahora = new Date();
+  const resultados = [];
+
+  Object.entries(conductores).forEach(([nombre, info]) => {
+    const pendientes = info.total - info.entregados;
+    const pct = info.total > 0 ? Math.round((info.entregados / info.total) * 100) : 0;
+    const comunaPrincipal = Object.entries(info.comunas).sort((a, b) => b[1] - a[1])[0]?.[0] || "—";
+
+    // Velocidad basada en timestamps reales de entrega
+    let velocidad = null;
+    let velocidadFuente = "timestamps";
+    let nuevosDelta = info.entregados; // cuántos lleva
+    if (info.timestamps.length >= 2) {
+      const primerTs = Math.min(...info.timestamps);
+      const horasActivo = Math.max((ahora.getTime() - primerTs) / 3600000, 0.05);
+      velocidad = info.entregados / horasActivo;
+      velocidadFuente = "timestamps";
+    } else if (info.timestamps.length === 1) {
+      // 1 timestamp: calcular desde ese punto
+      const horasActivo = Math.max((ahora.getTime() - info.timestamps[0]) / 3600000, 0.05);
+      velocidad = info.entregados / horasActivo;
+      velocidadFuente = "aprox";
+    } else if (info.entregados >= 3) {
+      // Sin timestamps pero con varias entregas: estimar desde ventana 17:00
+      const inicio17 = new Date(); inicio17.setHours(17, 0, 0, 0);
+      const horasDesde17 = Math.max((ahora.getTime() - inicio17.getTime()) / 3600000, 0.5);
+      velocidad = info.entregados / horasDesde17;
+      velocidadFuente = "estimado";
+    }
+
+    // ETA basada en velocidad real
+    let eta = null;
+    let etaClase = "ok";
+    if (velocidad !== null && velocidad > 0 && pendientes > 0) {
+      const horasRest = pendientes / velocidad;
+      const horaTermino = new Date(ahora.getTime() + horasRest * 3600000);
+      const cutoff22 = new Date(); cutoff22.setHours(22, 0, 0, 0);
+      const cutoff21 = new Date(); cutoff21.setHours(21, 0, 0, 0);
+      const esMañana = horaTermino.getDate() !== ahora.getDate();
+      eta = (esMañana ? "mañana " : "") + horaTermino.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+      etaClase = (horaTermino >= cutoff22 || esMañana) ? "crit" : horaTermino >= cutoff21 ? "warn" : "ok";
+    } else if (info.entregados === 0 && pendientes > 0) {
+      eta = "Sin inicio";
+      etaClase = "warn";
+    }
+
+    // Alarma — umbral cierre operacional: 22:00
+    let alarma = "verde";
+    let razon = "En tiempo";
+    const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
+
+    if (pendientes === 0) {
+      alarma = "verde"; razon = "Ruta finalizada ✓";
+    } else if (info.entregados === 0) {
+      // Sin ninguna entrega aún
+      if (info.total > 10 && horaActual >= 19) { alarma = "rojo";    razon = "Sin entregas después de las 19:00"; }
+      else if (info.total > 5)                 { alarma = "amarillo"; razon = "Sin entregas aún"; }
+    } else if (eta) {
+      // Tenemos ETA calculada — usar etaClase ya calculada con Date fijo
+      if (etaClase === "crit")      { alarma = "rojo";    razon = "ETA " + eta + " — fuera de plazo"; }
+      else if (etaClase === "warn") { alarma = "amarillo"; razon = "ETA " + eta + " — margen ajustado"; }
+      else                          { alarma = "verde";   razon = "ETA " + eta + " — dentro del plazo"; }
+    } else if (velocidad === null && horaActual >= 20) {
+      // Sin velocidad calculable y ya es tarde
+      alarma = "amarillo"; razon = "Sin datos suficientes para proyectar";
+    }
+
+    resultados.push({ nombre, total: info.total, entregados: info.entregados, pendientes, pct, comunaPrincipal, alarma, razon, velocidad, velocidadFuente, eta, etaClase, nuevosDelta: info.entregados });
+  });
+
+  // Ordenar: ROJO primero, luego AMARILLO, luego VERDE; dentro de cada grupo por % asc
+  const orden = { rojo: 0, amarillo: 1, verde: 2 };
+  resultados.sort((a, b) => orden[a.alarma] - orden[b.alarma] || a.pct - b.pct);
+
+  // Guardar snapshot del estado anterior antes de reemplazar
+  if (_resultados.length > 0) {
+    const _tAnt = _resultados.reduce((s, c) => s + c.total, 0);
+    const _eAnt = _resultados.reduce((s, c) => s + c.entregados, 0);
+    _snapshotAnterior = {
+      pct: _tAnt > 0 ? Math.round((_eAnt / _tAnt) * 100) : 0,
+      entregados: _eAnt,
+      total: _tAnt,
+      pendientes: _resultados.reduce((s, c) => s + c.pendientes, 0),
+      rojos: _resultados.filter(c => c.alarma === 'rojo').length,
+      amarillos: _resultados.filter(c => c.alarma === 'amarillo').length,
+      conductores: _resultados.length,
+      timestamp: new Date()
+    };
+  }
+  _resultados = resultados;
+  renderResumen(resultados, filename, timestamp);
+  renderConductores(resultados);
+
+  document.getElementById("upload-zone").style.display = "none";
+  document.getElementById("resumen").style.display = "block";
+  if (_vistaActual === 'lista') renderLista(resultados);
+}
+
+function renderResumen(resultados, filename, timestamp) {
+  const total = resultados.reduce((s, c) => s + c.total, 0);
+  const entregados = resultados.reduce((s, c) => s + c.entregados, 0);
+  const pendientes = resultados.reduce((s, c) => s + c.pendientes, 0);
+  const pct = total > 0 ? Math.round((entregados / total) * 100) : 0;
+  const rojos = resultados.filter(c => c.alarma === "rojo").length;
+  const amarillos = resultados.filter(c => c.alarma === "amarillo").length;
+  const color = pct >= 80 ? "var(--verde)" : pct >= 50 ? "var(--amarillo)" : "var(--orange)";
+
+  document.getElementById("resumen-titulo").textContent = "Reporte " + timestamp + " hrs";
+  document.getElementById("resumen-meta").textContent = filename + " — " + resultados.length + " conductores activos";
+  document.getElementById("kpi-conductores").textContent = resultados.length;
+  document.getElementById("kpi-total").textContent = total;
+  document.getElementById("kpi-entregados").textContent = entregados;
+  document.getElementById("kpi-pct").textContent = pct + "% del total";
+  document.getElementById("kpi-pendientes").textContent = pendientes;
+  document.getElementById("kpi-rojo").textContent = rojos;
+  document.getElementById("kpi-amarillo").textContent = amarillos;
+  document.getElementById("pct-label").textContent = pct + "%";
+  const fill = document.getElementById("progress-fill");
+  fill.style.width = pct + "%";
+  fill.style.background = color;
+  renderDelta(pct, entregados, rojos, amarillos, resultados.length);
+}
+
+function renderDelta(pctNuevo, entregadosNuevo, rojosNuevo, amarillosNuevo, conductoresNuevo) {
+  const panel = document.getElementById('delta-panel');
+  if (!_snapshotAnterior) { panel.style.display = 'none'; return; }
+
+  const dPct = pctNuevo - _snapshotAnterior.pct;
+  const dEnt = entregadosNuevo - _snapshotAnterior.entregados;
+  const dRoj = rojosNuevo - _snapshotAnterior.rojos;
+  const dAma = amarillosNuevo - _snapshotAnterior.amarillos;
+
+  const minutos = Math.round((new Date() - _snapshotAnterior.timestamp) / 60000);
+  const tiempoStr = minutos < 1 ? 'menos de 1 min' : minutos < 60
+    ? minutos + ' min'
+    : Math.floor(minutos / 60) + 'h ' + (minutos % 60) + 'min';
+
+  function flecha(d, invertir) {
+    if (d === 0) return '<span style="color:var(--muted)">sin cambio</span>';
+    const bueno = invertir ? d < 0 : d > 0;
+    const color = bueno ? 'var(--verde)' : 'var(--rojo)';
+    return '<span style="color:' + color + ';font-weight:700">' + (d > 0 ? '↑ +' : '↓ ') + d + '</span>';
+  }
+
+  panel.style.display = 'block';
+  panel.innerHTML =
+    '<div class="delta-header">📊 Comparación con carga anterior · hace ' + tiempoStr + '</div>' +
+    '<div class="delta-items">' +
+      '<div class="delta-item"><div class="delta-label">Avance global</div>' +
+        '<div class="delta-valores">' + _snapshotAnterior.pct + '% → ' + pctNuevo + '% &nbsp;' + flecha(dPct, false) + '</div></div>' +
+      '<div class="delta-item"><div class="delta-label">Entregas nuevas</div>' +
+        '<div class="delta-valores">' + flecha(dEnt, false) + ' en ' + tiempoStr + '</div></div>' +
+      '<div class="delta-item"><div class="delta-label">En ROJO</div>' +
+        '<div class="delta-valores">' + _snapshotAnterior.rojos + ' → ' + rojosNuevo + ' &nbsp;' + flecha(dRoj, true) + '</div></div>' +
+      '<div class="delta-item"><div class="delta-label">En AMARILLO</div>' +
+        '<div class="delta-valores">' + _snapshotAnterior.amarillos + ' → ' + amarillosNuevo + ' &nbsp;' + flecha(dAma, true) + '</div></div>' +
+    '</div>';
+}
+
+function renderConductores(resultados) {
+  const grid = document.getElementById("conductores-grid");
+  grid.innerHTML = resultados.map(c => {
+    const colores = { rojo: "var(--rojo)", amarillo: "var(--amarillo)", verde: "var(--verde)" };
+    const emojis = { rojo: "🔴", amarillo: "🟡", verde: "🟢" };
+    const color = colores[c.alarma];
+    const velText = c.velocidad !== null ? Math.round(c.velocidad) + " pdds/h" + (c.velocidadFuente === "estimado" ? " ~" : c.velocidadFuente === "aprox" ? " ≈" : "") : (c.entregados > 0 ? "calculando..." : "sin entregas aún");
+    const deltaText = c.nuevosDelta > 0 ? "+" + c.nuevosDelta + " vs anterior" : c.velocidad !== null ? "sin cambio" : "";
+    const etaHtml = c.eta ? `<span class="eta ${c.etaClase}">≈ ${c.eta}</span>` : `<span style="color:var(--muted)">calculando...</span>`;
+    return `<div class="conductor-card ${c.alarma}">
+      <div class="card-top">
+        <div>
+          <div class="conductor-nombre">${c.nombre}</div>
+          <div class="conductor-comuna">📍 ${c.comunaPrincipal}</div>
+        </div>
+        <div class="alarma-badge ${c.alarma}">${emojis[c.alarma]} ${c.alarma.toUpperCase()}</div>
+      </div>
+      <div class="card-stats">
+        <div class="stat"><div class="stat-val" style="color:${color}">${c.entregados}</div><div class="stat-label">Entregados</div></div>
+        <div class="stat"><div class="stat-val">${c.pendientes}</div><div class="stat-label">Pendientes</div></div>
+        <div class="stat"><div class="stat-val" style="color:${color}">${c.pct}%</div><div class="stat-label">Avance</div></div>
+      </div>
+      <div class="card-progress">
+        <div class="card-progress-track"><div class="card-progress-fill" style="width:${c.pct}%;background:${color}"></div></div>
+      </div>
+      <div class="card-meta">
+        <span style="color:var(--muted2)">⚡ ${velText}${deltaText ? " · " + deltaText : ""}</span>
+        ${etaHtml}
+      </div>
+      <div class="card-razon">${c.razon}</div>
+    </div>`;
+  }).join("");
+}
+
+// Filtro solo alarmas
+let soloAlarmas = false;
+let _resultados = []; // datos del último Excel cargado
+let _snapshotAnterior = null; // snapshot de la carga previa para comparación
+window.toggleSoloAlarmas = function() {
+  soloAlarmas = !soloAlarmas;
+  document.getElementById("btn-alarmas").classList.toggle("active", soloAlarmas);
+  document.querySelectorAll(".conductor-card").forEach(card => {
+    if (soloAlarmas) card.classList.toggle("hidden", card.classList.contains("verde"));
+    else card.classList.remove("hidden");
+  });
+};
+
+
+
+// --- VISTA CARDS / LISTA ---
+let _vistaActual = 'cards';
+window.setVista = function(v) {
+  _vistaActual = v;
+  document.getElementById('conductores-grid').style.display = v === 'cards' ? 'grid' : 'none';
+  document.getElementById('conductores-lista').style.display = v === 'lista' ? 'block' : 'none';
+  document.getElementById('btn-cards').classList.toggle('active', v === 'cards');
+  document.getElementById('btn-lista').classList.toggle('active', v === 'lista');
+  if (v === 'lista' && _resultados.length) renderLista(_resultados);
+};
+
+function renderLista(resultados) {
+  const emojis = { rojo: '🔴', amarillo: '🟡', verde: '🟢' };
+  const body = document.getElementById('lista-body');
+  body.innerHTML = resultados.map((c, i) => {
+    const colores = { rojo: 'var(--rojo)', amarillo: 'var(--amarillo)', verde: 'var(--verde)' };
+    const color = colores[c.alarma];
+    const velText = c.velocidad !== null ? Math.round(c.velocidad) + " pdds/h" + (c.velocidadFuente === "estimado" ? " ~" : c.velocidadFuente === "aprox" ? " ≈" : "") : (c.entregados > 0 ? "calculando..." : "sin datos");
+    const etaText = c.eta || '—';
+    return `<tr>
+      <td style="color:var(--muted);font-size:12px">${i+1}</td>
+      <td style="font-weight:600">${c.nombre}</td>
+      <td style="color:var(--muted2);font-size:12px">📍 ${c.comunaPrincipal}</td>
+      <td>
+        <div class="lista-avance">
+          <div class="mini-bar-track"><div class="mini-bar-fill" style="width:${c.pct}%;background:${color}"></div></div>
+          <span class="lista-pct">${c.pct}%</span>
+          <span style="font-size:12px;color:var(--muted)">${c.entregados}/${c.total}</span>
+        </div>
+      </td>
+      <td><span class="lista-badge ${c.alarma}">${emojis[c.alarma]} ${c.alarma.toUpperCase()}</span></td>
+      <td style="font-size:12px;color:var(--muted2)">${velText}</td>
+      <td style="font-size:13px;font-weight:700;color:${c.eta ? (c.etaClase==='crit' ? 'var(--rojo)' : c.etaClase==='warn' ? 'var(--amarillo)' : 'var(--verde)') : 'var(--muted)'}">
+        ${c.eta ? '🕐 ' + c.eta : '<span style="font-size:11px;font-weight:400">sin datos aún</span>'}
+      </td>
+      <td style="font-size:11px;color:var(--muted);font-style:italic">${c.razon}</td>
+    </tr>`;
+  }).join('');
+}
+
+// --- CERRAR DÍA ---
+window.cerrarDia = async function() {
+  if (!_resultados.length) { alert("No hay datos cargados."); return; }
+
+  const btn = document.getElementById("btn-cierre");
+  btn.disabled = true;
+  btn.textContent = "Guardando...";
+
+  const hoy = new Date();
+  const fecha = hoy.toISOString().slice(0, 10);
+  const horaStr = hoy.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
+
+  // Calcular resumen
+  const total = _resultados.reduce((s, c) => s + c.total, 0);
+  const entregados = _resultados.reduce((s, c) => s + c.entregados, 0);
+  const pct = total > 0 ? Math.round((entregados / total) * 100 * 10) / 10 : 0;
+  const rojos   = _resultados.filter(c => c.alarma === "rojo");
+  const amarillos = _resultados.filter(c => c.alarma === "amarillo");
+
+  // ① Exportar Excel con SheetJS
+  const filas = _resultados.map(c => ({
+    "Conductor": c.nombre,
+    "Comuna": c.comunaPrincipal,
+    "Total pedidos": c.total,
+    "Entregados": c.entregados,
+    "Pendientes": c.pendientes,
+    "% Avance": c.pct + "%",
+    "Estado": c.alarma.toUpperCase(),
+    "Razón": c.razon,
+    "Velocidad": c.velocidad !== null ? Math.round(c.velocidad) + " pdds/h" : "1ª carga",
+    "ETA estimada": c.eta || "—"
+  }));
+  const totRow = {
+    "Conductor": "TOTAL",
+    "Total pedidos": total,
+    "Entregados": entregados,
+    "Pendientes": total - entregados,
+    "% Avance": pct + "%",
+    "Estado": "",
+    "Razón": "",
+    "Velocidad": "",
+    "ETA estimada": ""
+  };
+  const ws = XLSX.utils.json_to_sheet([totRow, ...filas]);
+  ws["!cols"] = [20,16,14,12,12,10,12,24,16,14].map(w => ({ wch: w }));
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "Cierre " + fecha);
+  XLSX.writeFile(wb, "Cierre_Ruta_" + fecha + ".xlsx");
+
+  // ② Guardar resumen en Firestore /historial_ruta/{fecha}
+  try {
+    const resumen = {
+      fecha,
+      hora_cierre: horaStr,
+      total_pedidos: total,
+      total_conductores: _resultados.length,
+      entregados,
+      pct_efectividad: pct,
+      conteo_rojo: rojos.length,
+      conteo_amarillo: amarillos.length,
+      conductores_rojo: rojos.map(c => c.nombre),
+      conductores_amarillo: amarillos.map(c => c.nombre)
+    };
+    await setDoc(doc(db, "historial_ruta", fecha), resumen);
+    btn.textContent = "✅ Día cerrado";
+    btn.style.background = "rgba(34,197,94,0.25)";
+    setTimeout(() => {
+      btn.disabled = false;
+      btn.textContent = "🏁 Cerrar día";
+      btn.style.background = "";
+    }, 4000);
+  } catch(e) {
+    btn.disabled = false;
+    btn.textContent = "🏁 Cerrar día";
+    alert("Excel descargado ✅\nPero no se pudo guardar en Firebase: " + e.message + "\n\nVerifica las reglas de Firestore.");
+  }
+};
+
+window.resetUpload = function() {
+  document.getElementById("upload-zone").style.display = "flex";
+  document.getElementById("resumen").style.display = "none";
+  document.getElementById("conductores-grid").innerHTML = "";
+  document.getElementById("lista-body") && (document.getElementById("lista-body").innerHTML = "");
+  document.getElementById("file-input").value = "";
+  soloAlarmas = false;
+  document.getElementById("btn-alarmas").classList.remove("active");
+};
+</script>
+</body>
+</html>
