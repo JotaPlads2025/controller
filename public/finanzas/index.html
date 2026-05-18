@@ -1,0 +1,1348 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Recibelo — Finanzas</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2f45;--orange:#FF6B35;--text:#e2e8f0;--muted:#64748b;--muted2:#94a3b8;--rojo:#ef4444;--amarillo:#f59e0b;--verde:#22c55e;--azul:#3b82f6;}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",system-ui,sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex;flex-direction:column;}
+#app-loading{display:flex;align-items:center;justify-content:center;min-height:100vh;flex-direction:column;gap:16px;}
+.spin{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--orange);border-radius:50%;animation:spin .8s linear infinite;}
+@keyframes spin{to{transform:rotate(360deg);}}
+/* LOGIN */
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh;}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:48px 40px;width:100%;max-width:420px;text-align:center;}
+.login-btn{display:flex;align-items:center;justify-content:center;gap:12px;width:100%;padding:14px 20px;background:#2a2f45;border:1px solid var(--border);border-radius:10px;color:var(--text);font-size:15px;font-weight:600;cursor:pointer;margin-bottom:10px;}
+.login-btn:hover{background:#333a55;border-color:var(--orange);}
+.login-divider{display:flex;align-items:center;gap:10px;margin:4px 0 14px;}
+.login-divider span{font-size:12px;color:var(--muted);}
+.login-divider div{flex:1;height:1px;background:var(--border);}
+.login-error{margin-top:12px;color:var(--rojo);font-size:13px;min-height:18px;}
+/* APP */
+#app{display:none;flex-direction:column;flex:1;}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;}
+.badge-module{background:rgba(34,197,94,0.15);color:var(--verde);border:1px solid rgba(34,197,94,0.3);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;}
+.user-chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,0.05);border:1px solid var(--border);border-radius:20px;padding:5px 12px 5px 8px;cursor:pointer;}
+.user-chip:hover{background:rgba(239,68,68,0.1);border-color:var(--rojo);}
+.user-avatar{width:26px;height:26px;background:var(--verde);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;}
+.user-name{font-size:13px;color:var(--muted2);max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+/* LAYOUT */
+.app-shell{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:200px;min-width:200px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0;overflow-y:auto;}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px 6px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted2);text-decoration:none;border-left:3px solid transparent;transition:all .15s;}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text);}
+.nav-item.active{color:var(--text);border-left-color:var(--verde);background:rgba(34,197,94,0.08);}
+.nav-item.disabled{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.app-content{flex:1;overflow-y:auto;padding:28px;}
+/* TABS */
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:24px;}
+.tab{padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--verde);border-bottom-color:var(--verde);}
+.tab-content{display:none;}
+.tab-content.active{display:block;}
+/* UPLOAD CARDS */
+.upload-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:24px;}
+.upload-card{background:var(--card);border:2px dashed var(--border);border-radius:14px;padding:28px 24px;text-align:center;cursor:pointer;transition:all .2s;}
+.upload-card:hover,.upload-card.loaded{border-color:var(--verde);background:rgba(34,197,94,0.04);}
+.upload-card.loaded{border-style:solid;}
+.upload-icon{font-size:36px;margin-bottom:12px;}
+.upload-title{font-size:14px;font-weight:700;margin-bottom:4px;}
+.upload-sub{font-size:12px;color:var(--muted2);}
+.upload-badge{display:inline-block;margin-top:8px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700;background:rgba(34,197,94,0.15);color:var(--verde);}
+/* PROCESO BUTTON */
+.btn-procesar{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:16px;background:var(--verde);color:#000;font-size:15px;font-weight:700;border:none;border-radius:12px;cursor:pointer;transition:all .15s;margin-bottom:24px;}
+.btn-procesar:hover{background:#16a34a;}
+.btn-procesar:disabled{opacity:.4;cursor:not-allowed;}
+/* KPI ROW */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;margin-bottom:24px;}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;}
+.kpi-label{font-size:11px;color:var(--muted2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;}
+.kpi-value{font-size:26px;font-weight:800;}
+.kpi-sub{font-size:11px;color:var(--muted);margin-top:3px;}
+.kpi.verde{border-left:3px solid var(--verde);}
+.kpi.azul{border-left:3px solid var(--azul);}
+.kpi.amarillo{border-left:3px solid var(--amarillo);}
+.kpi.rojo{border-left:3px solid var(--rojo);}
+/* TABLE */
+.table-wrap{background:var(--card);border:1px solid var(--border);border-radius:12px;overflow:hidden;}
+.table-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--border);}
+.table-header h3{font-size:14px;font-weight:700;}
+.btn-export{background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:var(--verde);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;}
+.btn-export:hover{background:rgba(34,197,94,0.22);}
+table{width:100%;border-collapse:collapse;font-size:13px;}
+th{padding:10px 14px;text-align:left;font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border-bottom:1px solid var(--border);white-space:nowrap;}
+td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,0.04);}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:rgba(255,255,255,0.02);}
+.monto{text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}
+.monto.total{color:var(--verde);}
+.badge-orig{display:inline-block;padding:2px 8px;border-radius:10px;font-size:10px;font-weight:700;}
+.badge-SHIPIT{background:rgba(59,130,246,0.15);color:#60a5fa;}
+.badge-ENVIAME{background:rgba(139,92,246,0.15);color:#a78bfa;}
+.badge-ALAS{background:rgba(245,158,11,0.15);color:#fbbf24;}
+.badge-DESPACHALO{background:rgba(236,72,153,0.15);color:#f472b6;}
+.badge-RECIBELO{background:rgba(34,197,94,0.15);color:var(--verde);}
+/* INCIDENCIAS */
+.incid-section{margin-bottom:20px;}
+.incid-title{font-size:13px;font-weight:700;margin-bottom:10px;display:flex;align-items:center;gap:8px;}
+.incid-count{background:rgba(239,68,68,0.15);color:var(--rojo);border-radius:10px;padding:2px 8px;font-size:11px;}
+.incid-count.warn{background:rgba(245,158,11,0.15);color:var(--amarillo);}
+.incid-list{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;}
+.incid-row{padding:10px 16px;border-bottom:1px solid rgba(255,255,255,0.04);font-size:12px;display:flex;align-items:center;gap:12px;}
+.incid-row:last-child{border-bottom:none;}
+.incid-tag{font-size:10px;font-weight:700;padding:2px 7px;border-radius:8px;white-space:nowrap;}
+.tag-sinmatch{background:rgba(239,68,68,0.15);color:var(--rojo);}
+.tag-tabla{background:rgba(245,158,11,0.15);color:var(--amarillo);}
+.tag-sintarifa{background:rgba(100,116,139,0.2);color:var(--muted2);}
+/* SORT */
+th.sortable{cursor:pointer;user-select:none;}
+th.sortable:hover{color:var(--text);background:rgba(255,255,255,0.03);}
+th.sort-asc::after{content:" ↑";color:var(--verde);}
+th.sort-desc::after{content:" ↓";color:var(--verde);}
+/* EMPTY */
+.empty{text-align:center;padding:60px 20px;color:var(--muted);}
+.empty-icon{font-size:48px;margin-bottom:16px;}
+.search-bar{display:flex;gap:10px;margin-bottom:16px;}
+.search-input{flex:1;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 14px;color:var(--text);font-size:13px;}
+.search-input:focus{outline:none;border-color:var(--verde);}
+select.search-input{cursor:pointer;}
+</style>
+</head>
+<body>
+
+<div id="app-loading">
+  <div class="spin"></div>
+  <div style="color:var(--muted2);font-size:14px">Verificando acceso...</div>
+</div>
+
+<div id="login-screen">
+  <div class="login-card">
+    <img src="/logo.png" alt="Recibelo" style="height:52px;margin:0 auto 20px;display:block">
+    <div style="font-size:20px;font-weight:700;margin-bottom:6px">Finanzas</div>
+    <div style="color:var(--muted2);font-size:14px;margin-bottom:36px">Facturación de cara a clientes.<br>Ingresa con tu cuenta corporativa.</div>
+    <button class="login-btn" onclick="signInMS()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Continuar con Microsoft
+    </button>
+    <div class="login-divider"><div></div><span>o</span><div></div></div>
+    <button class="login-btn" onclick="signInGoogle()">
+      <svg width="18" height="18" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Continuar con Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;flex-direction:column;flex:1">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/logo.png" alt="Recibelo" style="height:28px">
+      <span class="badge-module">Finanzas</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="user-chip" onclick="doSignOut()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span class="user-name" id="user-name"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="nav-section">Módulos</div>
+      <a id="nav-controller" href="/" class="nav-item">📋 Controller</a>
+      <a id="nav-asistencia" href="/asistencia_ruta" class="nav-item">🚚 Asistencia Ruta</a>
+      <a id="nav-operacional" href="/operacional" class="nav-item">⚙️ Operacional</a>
+      <a href="/finanzas" class="nav-item active">💰 Finanzas</a>
+    </nav>
+
+    <div class="app-content">
+      <div style="margin-bottom:24px">
+        <h1 style="font-size:22px;font-weight:800">Facturación a Clientes</h1>
+        <p style="color:var(--muted2);font-size:13px;margin-top:4px">Carga el Excel de paquetes para calcular el cobro. Las tarifas se gestionan en la pestaña <strong>Tarifas</strong>.</p>
+      </div>
+
+      <div class="tabs">
+        <div class="tab active" onclick="switchTab('cobros',this)">💰 Cobros</div>
+        <div class="tab" onclick="switchTab('incidencias',this)">⚠️ Incidencias <span id="badge-incid" style="display:none;background:rgba(239,68,68,0.2);color:var(--rojo);border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px"></span></div>
+        <div class="tab" onclick="switchTab('reembolsos',this)">💸 Reembolsos</div>
+        <div class="tab" onclick="switchTab('tarifas',this)">📋 Tarifas</div>
+        <div class="tab" onclick="switchTab('carga',this)">📂 Carga</div>
+      </div>
+
+      <!-- TAB COBROS -->
+      <div id="tab-cobros" class="tab-content active">
+        <div id="cobros-empty" class="empty">
+          <div class="empty-icon">💰</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:8px">Sin datos aún</div>
+          <div style="color:var(--muted2);font-size:13px">Ve a la pestaña <strong>Carga</strong> para subir los Excels y calcular el cobro.</div>
+        </div>
+        <div id="cobros-resultado" style="display:none">
+          <div class="kpi-row" id="kpi-row"></div>
+          <div style="margin-bottom:12px" class="search-bar">
+            <input class="search-input" id="search-cliente" placeholder="Buscar cliente..." oninput="filtrarTabla()">
+            <select class="search-input" id="filtro-origen" onchange="filtrarTabla()" style="max-width:160px">
+              <option value="">Todos los orígenes</option>
+              <option>SHIPIT</option><option>ENVIAME</option><option>ALAS</option>
+              <option>DESPACHALO</option><option>RECIBELO</option>
+            </select>
+          </div>
+          <div class="table-wrap">
+            <div class="table-header">
+              <h3>Cobro por cliente <span id="sub-periodo" style="font-weight:400;color:var(--muted);font-size:12px"></span></h3>
+              <div style="display:flex;gap:8px;align-items:center">
+                <div style="position:relative">
+                  <button class="btn-export" onclick="toggleMenuPDF()" id="btn-pdf-menu">📄 PDF ▾</button>
+                  <div id="menu-pdf" style="display:none;position:absolute;right:0;top:110%;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px;min-width:180px;z-index:200;box-shadow:0 4px 20px rgba(0,0,0,0.4)">
+                    <button onclick="exportarPDFCliente();toggleMenuPDF()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">📄 PDF de un cliente</button>
+                    <button onclick="exportarZIPTodos();toggleMenuPDF()" style="display:block;width:100%;text-align:left;background:none;border:none;color:var(--text);padding:8px 12px;font-size:13px;cursor:pointer;border-radius:6px" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">📦 ZIP todos los clientes</button>
+                  </div>
+                </div>
+                <button class="btn-export" onclick="exportarExcel()">⬇ Excel</button>
+                <button id="btn-cerrar-mes" onclick="abrirCierreMes()" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:var(--verde);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:none">✅ Cerrar mes</button>
+              </div>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th class="sortable" onclick="sortCobros('nombre')">Cliente</th>
+                  <th class="sortable" onclick="sortCobros('origen')">Origen</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('pkts')">Paquetes</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('sd')">Sameday</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('nd')">Next Day</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('turbo')">Turbo</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('recargos')">Recargos</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('total')">Total</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-cobros"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB INCIDENCIAS -->
+      <div id="tab-incidencias" class="tab-content">
+        <div id="incid-empty" class="empty">
+          <div class="empty-icon">✅</div>
+          <div style="font-size:16px;font-weight:700;margin-bottom:8px">Sin incidencias</div>
+          <div style="color:var(--muted2);font-size:13px">Procesa los Excels para ver si hay incidencias.</div>
+        </div>
+        <div id="incid-resultado" style="display:none"></div>
+      </div>
+
+      <!-- TAB REEMBOLSOS -->
+      <div id="tab-reembolsos" class="tab-content">
+        <div style="display:grid;grid-template-columns:360px 1fr;gap:24px;align-items:start">
+          <!-- FORMULARIO -->
+          <div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px">
+            <h3 style="font-size:14px;font-weight:700;margin-bottom:16px">➕ Registrar reembolso</h3>
+            <div style="display:flex;flex-direction:column;gap:12px">
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">PERÍODO</label>
+                <input type="month" id="rb-periodo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">CLIENTE</label>
+                <input type="text" id="rb-cliente-search" placeholder="Buscar cliente..." oninput="filtrarRBClientes()" autocomplete="off"
+                  style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
+                <div id="rb-cliente-drop" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:160px;overflow-y:auto;position:relative;z-index:10"></div>
+                <input type="hidden" id="rb-cliente-key">
+                <input type="hidden" id="rb-cliente-nombre">
+                <input type="hidden" id="rb-cliente-origen">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">MOTIVO</label>
+                <select id="rb-motivo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
+                  <option value="Siniestro">Siniestro</option>
+                  <option value="Trazabilidad">Trazabilidad</option>
+                  <option value="Producto dañado">Producto dañado</option>
+                  <option value="Otro">Otro</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">MONTO ($)</label>
+                <input type="number" id="rb-monto" placeholder="Ej: 25000" min="0"
+                  style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">DESCRIPCIÓN</label>
+                <textarea id="rb-descripcion" placeholder="Ej: Pedido #123456 extraviado — valor declarado $25.000" rows="3"
+                  style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px;resize:vertical"></textarea>
+              </div>
+              <button onclick="guardarReembolso()" style="background:var(--verde);color:#000;border:none;border-radius:8px;padding:10px;font-weight:700;font-size:13px;cursor:pointer;width:100%">Guardar reembolso</button>
+              <div id="rb-msg" style="font-size:12px;min-height:16px;text-align:center"></div>
+            </div>
+          </div>
+
+          <!-- TABLA -->
+          <div>
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+              <div>
+                <h3 style="font-size:14px;font-weight:700">Registro de reembolsos</h3>
+                <p style="font-size:11px;color:var(--muted2);margin-top:2px">Filtra por período para ver el historial</p>
+              </div>
+              <div style="display:flex;gap:8px;align-items:center">
+                <input type="month" id="rb-filtro-periodo" oninput="cargarReembolsosFS()" style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:6px 10px;color:var(--text);font-size:12px">
+                <span id="rb-total-periodo" style="font-size:12px;font-weight:700;color:var(--rojo)"></span>
+              </div>
+            </div>
+            <div id="rb-tabla-wrap" class="table-wrap">
+              <table>
+                <thead><tr>
+                  <th>Período</th><th>Cliente</th><th>Origen</th><th>Motivo</th>
+                  <th style="text-align:right">Monto</th><th>Descripción</th><th></th>
+                </tr></thead>
+                <tbody id="tbody-reembolsos"></tbody>
+              </table>
+            </div>
+            <div id="rb-empty" style="text-align:center;padding:40px;color:var(--muted);display:none">Sin reembolsos para este período</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB TARIFAS -->
+      <div id="tab-tarifas" class="tab-content">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <div>
+            <h3 style="font-size:15px;font-weight:700">Tarifas por cliente</h3>
+            <p style="font-size:12px;color:var(--muted2);margin-top:2px">Sube el Excel de tarifas para poblar Firestore. Después puedes editar valores manualmente.</p>
+          </div>
+          <div style="display:flex;gap:10px">
+            <label style="background:var(--card);border:1px solid var(--border);border-radius:8px;padding:7px 14px;font-size:12px;font-weight:700;cursor:pointer;color:var(--muted2)">
+              📥 Subir Excel
+              <input type="file" id="inp-tarifas-sync" accept=".xlsx,.xls" style="display:none" onchange="syncTarifas(this)">
+            </label>
+            <input class="search-input" id="search-tarifa" placeholder="Buscar cliente..." oninput="filtrarTarifas()" style="max-width:200px">
+          </div>
+        </div>
+        <div id="tarifas-loading" style="text-align:center;padding:40px;color:var(--muted)">Cargando tarifas...</div>
+        <div id="tarifas-wrap" style="display:none">
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th class="sortable" onclick="sortTarifas('nombre')">Cliente</th>
+                  <th class="sortable" onclick="sortTarifas('origen')">Origen</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('sameday')">Sameday</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('next_day')">Next Day</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('colina_same')">Colina SD</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('colina_next_day')">Colina ND</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('next_day_rural')">Rural</th>
+                  <th class="sortable" style="text-align:right" onclick="sortTarifas('tarifa_turbo')">Turbo</th>
+                  <th style="text-align:center">Acciones</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-tarifas"></tbody>
+            </table>
+          </div>
+          <div id="tarifas-count" style="font-size:11px;color:var(--muted);margin-top:8px;text-align:right"></div>
+        </div>
+        <div id="tarifas-empty" style="display:none" class="empty">
+          <div class="empty-icon">📋</div>
+          <div style="font-size:15px;font-weight:700;margin-bottom:8px">Sin tarifas cargadas</div>
+          <div style="font-size:13px;color:var(--muted2)">Sube el Excel de tarifas para poblar Firestore.</div>
+        </div>
+      </div>
+
+      <!-- MODAL EDITAR TARIFA -->
+      <div id="modal-tarifa" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.7);z-index:999;align-items:center;justify-content:center">
+        <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:540px;max-height:80vh;overflow-y:auto">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px">
+            <h3 id="modal-titulo" style="font-size:15px;font-weight:700"></h3>
+            <button onclick="cerrarModal()" style="background:none;border:none;color:var(--muted2);cursor:pointer;font-size:18px">✕</button>
+          </div>
+          <div id="modal-campos" style="display:grid;grid-template-columns:1fr 1fr;gap:12px"></div>
+          <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end">
+            <button onclick="cerrarModal()" style="background:var(--bg);border:1px solid var(--border);color:var(--muted2);border-radius:8px;padding:8px 18px;cursor:pointer">Cancelar</button>
+            <button onclick="guardarTarifaEdit()" style="background:var(--verde);color:#000;border:none;border-radius:8px;padding:8px 18px;font-weight:700;cursor:pointer">Guardar</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- TAB CARGA -->
+      <div id="tab-carga" class="tab-content">
+        <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--muted2)">
+          ✅ Las tarifas se cargan automáticamente desde Firestore. Gestiónalas en la pestaña <strong style="color:var(--text)">Tarifas</strong>.
+        </div>
+        <div class="upload-grid" style="grid-template-columns:1fr">
+          <div class="upload-card" id="card-paquetes" onclick="document.getElementById('inp-paquetes').click()">
+            <input type="file" id="inp-paquetes" accept=".xlsx,.xls" style="display:none" multiple onchange="loadPaquetes(this)">
+            <div class="upload-icon">📦</div>
+            <div class="upload-title">Excel(s) de Paquetes</div>
+            <div class="upload-sub" id="sub-paquetes">Puedes seleccionar varios archivos a la vez<br>o agregarlos de a uno</div>
+          </div>
+          <div id="paq-lista" style="margin-top:10px;display:none">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px">
+              <span style="font-size:11px;font-weight:700;color:var(--muted2)">ARCHIVOS CARGADOS</span>
+              <button onclick="limpiarPaquetes()" style="background:none;border:none;color:var(--rojo);font-size:11px;cursor:pointer">✕ Limpiar todo</button>
+            </div>
+            <div id="paq-items"></div>
+          </div>
+        </div>
+        <button class="btn-procesar" id="btn-procesar" onclick="procesar()" disabled>
+          ⚡ Calcular cobro por cliente
+        </button>
+        <div id="log-proceso" style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px;font-size:12px;color:var(--muted2);font-family:monospace;min-height:60px;white-space:pre-wrap;display:none"></div>
+      </div>
+
+    </div><!-- app-content -->
+  </div><!-- app-shell -->
+</div><!-- app -->
+
+<script type="module">
+import { db, nk, fmt, safeId, setupAuth } from "/shared/auth.js";
+import { doc, getDoc, setDoc, collection, getDocs, deleteDoc, writeBatch } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// --- DATA ---
+let TARIFAS={};    // key: nk(nombre) -> objeto de tarifas (desde Firestore)
+let TARIFAS_RAW=[]; // lista para tabla
+let ALIASES={};    // key: nk(nombrePaquetes) -> Firestore doc ID en fin_tarifas_clientes
+let ALIASES_RAW=[]; // lista para UI
+let PAQUETES_LOTES=[]; // [{nombre, filas}] — un lote por Excel cargado
+let RESULTADOS=[];
+let INCIDENCIAS=[];
+let _userRoles=[];
+let _editKey=null;
+let _aliasTarget=null; // {cliente, origen} pendiente de mapear
+
+const TARIFA_COLS=[
+  {k:"sameday",label:"Sameday"},
+  {k:"next_day",label:"Next Day"},
+  {k:"colina_same",label:"Colina SD"},
+  {k:"colina_next_day",label:"Colina ND"},
+  {k:"next_day_rural",label:"Rural"},
+  {k:"tarifa_turbo",label:"Turbo"},
+  {k:"recargo_l",label:"Rec. L SD"},
+  {k:"recargo_netday_l",label:"Rec. L ND"},
+  {k:"recargo_xl_sameday",label:"Rec. XL SD"},
+  {k:"recargo_xl_nextday",label:"Rec. XL ND"},
+  {k:"recargo_xxl_sameday",label:"Rec. XXL SD"},
+  {k:"recargo_xxl_nextday",label:"Rec. XXL ND"},
+  {k:"recargo_xxxl",label:"Rec. XXXL SD"},
+  {k:"recargo_xxxl_nextday",label:"Rec. XXXL ND"},
+  {k:"recargo_5xl",label:"Rec. 5XL"},
+  {k:"tarifa_retiros",label:"Retiros"},
+];
+
+// mapear columnas del Excel a keys de Firestore
+const COL_MAP={
+  "SAMEDAY":"sameday","COLINA SAME":"colina_same","NEXT DAY":"next_day",
+  "COLINA NEXT DAY":"colina_next_day","NEXT DAY RURAL":"next_day_rural",
+  "TARIFA TURBO":"tarifa_turbo","RECARGO L":"recargo_l","RECARGO NETDAY L":"recargo_netday_l",
+  "Recargo XL Sameday":"recargo_xl_sameday","Recargo XL Nextday":"recargo_xl_nextday",
+  "RECARGO SAMEDAY XXL":"recargo_xxl_sameday","Recargo XXL Nextday":"recargo_xxl_nextday",
+  "RECARGO XXXL":"recargo_xxxl","RECARGO XXXL NEXTDAY":"recargo_xxxl_nextday",
+  "RECARGO 5XL":"recargo_5xl","Tarifa Retiros":"tarifa_retiros",
+};
+
+// --- UTILS ---
+// nk(), fmt(), safeId() importadas desde /shared/auth.js
+function vNum(v){if(v===null||v===undefined||v==="SIN SERV"||v==="SIN TARIFA"||v==="CPS"||v==="SIN RECARGO"||v==="NOTA"||v==="")return 0;if(v==="TABLA")return"TABLA";const n=parseFloat(String(v).replace(/[^0-9.-]/g,""));return isNaN(n)?0:n;}
+
+const INTEGRADORES=["shipit","enviame","alas","despachalo"];
+const RURALES=["talagante","maria pinto","pirque","buin","nos","curacavi","calera de tango","san jose de maipo","el monte","lampa","paine","penaflor","melipilla"];
+
+function detectZona(comuna){
+  const c=nk(comuna);
+  if(c==="colina")return"COLINA";
+  if(RURALES.includes(c))return"RURAL";
+  return"NORMAL";
+}
+
+function detectServicio(tags){
+  const t=String(tags||"").toLowerCase();
+  let serv="SAMEDAY",tam="";
+  if(t.includes("turbo"))serv="TURBO";
+  else if(t.includes("next day"))serv="NEXTDAY";
+  if(t.includes("5xl")||t.includes("xxxxxl"))tam="5XL";
+  else if(t.includes("xxxl"))tam="XXXL";
+  else if(t.includes("xxl"))tam="XXL";
+  else if(t.includes("xl"))tam="XL";
+  else if(t.includes("tamano l")||t.includes("tamaño l"))tam="L";
+  return{serv,tam};
+}
+
+function calcTarifa(t,serv,zona,tam){
+  if(!t)return{base:0,recargo:0,incid:"SIN_MATCH"};
+  let bk,rk;
+  if(serv==="TURBO")bk="tarifa_turbo";
+  else if(zona==="COLINA")bk=serv==="NEXTDAY"?"colina_next_day":"colina_same";
+  else if(zona==="RURAL")bk="next_day_rural";
+  else bk=serv==="NEXTDAY"?"next_day":"sameday";
+
+  const bv=t[bk];
+  if(bv==="TABLA"||bv==="tabla")return{base:0,recargo:0,incid:"TABLA"};
+  const base=vNum(bv);
+  if(base===0&&bv!==0&&bv!==null&&bv!==undefined)return{base:0,recargo:0,incid:"SIN_TARIFA"};
+
+  if(tam==="L")rk=serv==="NEXTDAY"?"recargo_netday_l":"recargo_l";
+  else if(tam==="XL")rk=serv==="NEXTDAY"?"recargo_xl_nextday":"recargo_xl_sameday";
+  else if(tam==="XXL")rk=serv==="NEXTDAY"?"recargo_xxl_nextday":"recargo_xxl_sameday";
+  else if(tam==="XXXL")rk=serv==="NEXTDAY"?"recargo_xxxl_nextday":"recargo_xxxl";
+  else if(tam==="5XL")rk="recargo_5xl";
+  const recargo=tam?vNum(t[rk]||0):0;
+  return{base,recargo:typeof recargo==="number"?recargo:0,incid:null};
+}
+
+// --- TARIFAS FIRESTORE ---
+async function cargarTarifasFS(){
+  document.getElementById("tarifas-loading").style.display="block";
+  document.getElementById("tarifas-wrap").style.display="none";
+  document.getElementById("tarifas-empty").style.display="none";
+  try{
+    const snap=await getDocs(collection(db,"fin_tarifas_clientes"));
+    TARIFAS={};TARIFAS_RAW=[];
+    snap.forEach(d=>{const data=d.data();TARIFAS[d.id]=data;TARIFAS_RAW.push({...data,_key:d.id});});
+    TARIFAS_RAW.sort((a,b)=>String(a.nombre||"").localeCompare(String(b.nombre||"")));
+    document.getElementById("tarifas-loading").style.display="none";
+    if(!TARIFAS_RAW.length){document.getElementById("tarifas-empty").style.display="block";}
+    else{document.getElementById("tarifas-wrap").style.display="block";filtrarTarifas();}
+  }catch(e){document.getElementById("tarifas-loading").textContent="Error: "+e.message;}
+}
+
+window.filtrarTarifas=function(){
+  const q=nk(document.getElementById("search-tarifa").value);
+  let lista=q?TARIFAS_RAW.filter(t=>nk(t.nombre||"").includes(q)):[...TARIFAS_RAW];
+  const {key:tk,dir:td}=_sortTarifas;
+  lista.sort((a,b)=>{
+    const av=a[tk],bv=b[tk];
+    if(av===null||av===undefined)return 1;
+    if(bv===null||bv===undefined)return -1;
+    if(typeof av==="string")return av.localeCompare(bv)*td;
+    return((parseFloat(av)||0)-(parseFloat(bv)||0))*td;
+  });
+  const fmtV=v=>{if(v===null||v===undefined||v==="")return'<span style="color:var(--muted)">—</span>';if(String(v).toUpperCase()==="TABLA")return'<span style="color:var(--amarillo)">TABLA</span>';if(String(v).toUpperCase()==="SIN SERV"||String(v).toUpperCase()==="SIN TARIFA")return'<span style="color:var(--muted)">—</span>';return"$"+fmt(parseFloat(v)||0);};
+  document.getElementById("tbody-tarifas").innerHTML=lista.map(t=>`
+    <tr>
+      <td style="font-weight:600;font-size:13px">${t.nombre||"—"}</td>
+      <td><span class="badge-orig badge-${t.origen||""}">${t.origen||"—"}</span></td>
+      <td class="monto">${fmtV(t.sameday)}</td>
+      <td class="monto">${fmtV(t.next_day)}</td>
+      <td class="monto">${fmtV(t.colina_same)}</td>
+      <td class="monto">${fmtV(t.colina_next_day)}</td>
+      <td class="monto">${fmtV(t.next_day_rural)}</td>
+      <td class="monto">${fmtV(t.tarifa_turbo)}</td>
+      <td style="text-align:center"><button onclick="editarTarifa('${t._key}')" style="background:rgba(59,130,246,0.12);border:1px solid rgba(59,130,246,0.3);color:#60a5fa;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer">✏️ Editar</button></td>
+    </tr>`).join("")||'<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>';
+  document.getElementById("tarifas-count").textContent=`${lista.length} de ${TARIFAS_RAW.length} clientes`;
+};
+
+window.editarTarifa=function(key){
+  const t=TARIFAS[key];if(!t)return;
+  _editKey=key;
+  document.getElementById("modal-titulo").textContent=t.nombre||key;
+  document.getElementById("modal-campos").innerHTML=TARIFA_COLS.map(c=>`
+    <div>
+      <label style="font-size:11px;color:var(--muted2);display:block;margin-bottom:4px">${c.label}</label>
+      <input id="edit-${c.k}" value="${t[c.k]!==null&&t[c.k]!==undefined?t[c.k]:""}" placeholder="0 / TABLA / SIN SERV"
+        style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:6px;padding:7px 10px;color:var(--text);font-size:13px">
+    </div>`).join("");
+  document.getElementById("modal-tarifa").style.display="flex";
+};
+
+window.cerrarModal=()=>document.getElementById("modal-tarifa").style.display="none";
+
+window.guardarTarifaEdit=async function(){
+  if(!_editKey)return;
+  const updates={};
+  TARIFA_COLS.forEach(c=>{
+    const raw=document.getElementById("edit-"+c.k)?.value?.trim()||"";
+    const up=raw.toUpperCase();
+    if(up===""||up==="SIN SERV"||up==="SIN TARIFA")updates[c.k]=null;
+    else if(up==="TABLA")updates[c.k]="TABLA";
+    else{const n=parseFloat(raw);updates[c.k]=isNaN(n)?null:n;}
+  });
+  try{
+    await setDoc(doc(db,"fin_tarifas_clientes",_editKey),updates,{merge:true});
+    Object.assign(TARIFAS[_editKey],updates);
+    const idx=TARIFAS_RAW.findIndex(t=>t._key===_editKey);
+    if(idx>=0)Object.assign(TARIFAS_RAW[idx],updates);
+    filtrarTarifas();
+    cerrarModal();
+  }catch(e){alert("Error guardando: "+e.message);}
+};
+
+// Sync desde Excel → Firestore (batch write)
+window.syncTarifas=function(inp){
+  const file=inp.files[0];if(!file)return;
+  if(!confirm(`¿Subir tarifas de "${file.name}" a Firestore?\nEsto sobreescribe los datos existentes (${TARIFAS_RAW.length} actuales).`))return;
+  const reader=new FileReader();
+  reader.onload=async e=>{
+    const logEl=document.querySelector("#tab-tarifas .sync-log")||null;
+    const setLog=m=>{if(logEl)logEl.textContent=m;};
+    try{
+      const wb=XLSX.read(e.target.result,{type:"binary",raw:true});
+      const sheetName=wb.SheetNames.find(n=>n.toLowerCase().includes("tarifa")&&n.toLowerCase().includes("nueva"))
+        ||wb.SheetNames.find(n=>n.toLowerCase().includes("tarifa"))||wb.SheetNames[0];
+      const ws=wb.Sheets[sheetName];
+      if(!ws){alert("No se encontró hoja de tarifas. Hojas: "+wb.SheetNames.join(", "));return;}
+
+      const aoa=XLSX.utils.sheet_to_json(ws,{header:1,raw:true,defval:""});
+      if(aoa.length<2){alert("Hoja vacía.");return;}
+      const headers=aoa[0].map(h=>String(h||"").trim());
+      const iNombre=headers.findIndex(h=>h.toLowerCase().includes("cliente recibelo")||h.toLowerCase()==="cliente");
+      const iOrigen=headers.findIndex(h=>h.toLowerCase()==="origen");
+      if(iNombre<0){alert("No se encontró columna 'Cliente Recibelo'. Headers: "+headers.slice(0,6).join(", "));return;}
+      const hIdx={};headers.forEach((h,i)=>{hIdx[h]=i;});
+
+      // Recopilar docs
+      const docs=[],dupes=new Set(),skipped=[];
+      const seen={};
+      for(let r=1;r<aoa.length;r++){
+        const row=aoa[r];
+        const nombre=String(row[iNombre]||"").trim();
+        if(!nombre)continue;
+        const origen=iOrigen>=0?String(row[iOrigen]||"").trim():"";
+        // Key único: origen + nombre normalizado
+        const baseKey=nk(nombre);
+        const fullKey=safeId(origen?origen+"_"+baseKey:baseKey);
+        if(seen[fullKey]){dupes.add(nombre);continue;}
+        seen[fullKey]=true;
+        const data={nombre,origen};
+        Object.entries(COL_MAP).forEach(([col,fk])=>{
+          const ci=hIdx[col]??hIdx[Object.keys(hIdx).find(k=>k.trim()===col.trim())];
+          if(ci===undefined){data[fk]=null;return;}
+          const v=row[ci];
+          if(v===null||v===undefined||v===""){data[fk]=null;return;}
+          const vs=String(v).trim().toUpperCase();
+          if(["SIN SERV","SIN TARIFA","CPS","NOTA","SIN RECARGO"].includes(vs)){data[fk]=null;}
+          else if(vs==="TABLA"){data[fk]="TABLA";}
+          else{const n=parseFloat(String(v).replace(",","."));data[fk]=isNaN(n)?null:n;}
+        });
+        docs.push({key:fullKey,data});
+      }
+
+      // Batch write (máx 500 por batch)
+      let ok=0,err=0;
+      for(let i=0;i<docs.length;i+=500){
+        setLog(`Subiendo... ${Math.min(i+500,docs.length)}/${docs.length}`);
+        const batch=writeBatch(db);
+        docs.slice(i,i+500).forEach(({key,data})=>batch.set(doc(db,"fin_tarifas_clientes",key),data));
+        try{await batch.commit();ok+=Math.min(500,docs.length-i);}
+        catch(be){
+          // fallback: individual
+          for(const {key,data} of docs.slice(i,i+500)){
+            try{await setDoc(doc(db,"fin_tarifas_clientes",key),data);ok++;}
+            catch(e2){err++;skipped.push(data.nombre);}
+          }
+        }
+      }
+      let msg=`✅ Sync completado: ${ok} clientes subidos.`;
+      if(dupes.size)msg+=`\n⚠ ${dupes.size} duplicados omitidos.`;
+      if(err)msg+=`\n❌ ${err} errores: ${skipped.slice(0,5).join(", ")}`;
+      alert(msg);
+      inp.value="";
+      await cargarTarifasFS();
+    }catch(err2){alert("Error: "+err2.message);console.error(err2);}
+  };
+  reader.readAsBinaryString(file);
+};
+
+// --- AUTH (gestionado por /shared/auth.js) ---
+setupAuth({
+  modulo: "finanzas",
+  onReady: async (user, roles) => {
+    _currentUser = user;
+    _userRoles   = roles;
+    const hoy = periodoActual();
+    document.getElementById("rb-periodo").value       = hoy;
+    document.getElementById("rb-filtro-periodo").value = hoy;
+    cargarTarifasFS();
+    cargarAliases();
+    cargarReembolsosFS();
+  }
+});
+
+// --- TABS ---
+window.switchTab=function(id,el){
+  document.querySelectorAll(".tab").forEach(t=>t.classList.remove("active"));
+  document.querySelectorAll(".tab-content").forEach(t=>t.classList.remove("active"));
+  el.classList.add("active");
+  document.getElementById("tab-"+id).classList.add("active");
+};
+
+// --- CARGA PAQUETES ---
+function actualizarUIPaquetes(){
+  const total=PAQUETES_LOTES.reduce((a,l)=>a+l.filas.length,0);
+  const lista=document.getElementById("paq-lista");
+  const items=document.getElementById("paq-items");
+  if(!PAQUETES_LOTES.length){lista.style.display="none";document.getElementById("card-paquetes").classList.remove("loaded");return;}
+  lista.style.display="block";
+  document.getElementById("card-paquetes").classList.add("loaded");
+  items.innerHTML=PAQUETES_LOTES.map((l,i)=>`
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:8px 12px;margin-bottom:6px;font-size:12px">
+      <span>📄 ${l.nombre} <span style="color:var(--muted)">(${l.filas.length.toLocaleString()} filas)</span></span>
+      <button onclick="quitarLote(${i})" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px">✕</button>
+    </div>`).join("");
+  document.getElementById("sub-paquetes").innerHTML=`<span class="upload-badge">✓ ${PAQUETES_LOTES.length} archivo${PAQUETES_LOTES.length>1?"s":""} · ${total.toLocaleString()} filas totales</span>`;
+  checkReady();
+}
+
+window.quitarLote=function(i){PAQUETES_LOTES.splice(i,1);actualizarUIPaquetes();};
+window.limpiarPaquetes=function(){PAQUETES_LOTES=[];actualizarUIPaquetes();};
+
+window.loadPaquetes=function(inp){
+  const files=Array.from(inp.files);if(!files.length)return;
+  let pendientes=files.length;
+  files.forEach(file=>{
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const wb=XLSX.read(e.target.result,{type:"binary",raw:true});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        const raw=XLSX.utils.sheet_to_json(ws,{raw:true,defval:""});
+        const filas=raw.map(row=>{
+          const r={};
+          Object.entries(row).forEach(([k,v])=>r[k.trim().replace(/\s+/g," ")]=v);
+          return r;
+        });
+        PAQUETES_LOTES.push({nombre:file.name,filas});
+        pendientes--;
+        if(pendientes===0)actualizarUIPaquetes();
+      }catch(err){alert("Error leyendo "+file.name+": "+err.message);}
+    };
+    reader.readAsBinaryString(file);
+  });
+  inp.value=""; // reset para permitir volver a agregar
+};
+
+function checkReady(){
+  document.getElementById("btn-procesar").disabled=!PAQUETES_LOTES.length;
+}
+function log(msg){
+  const el=document.getElementById("log-proceso");
+  el.style.display="block";
+  el.textContent+=(el.textContent?"\n":"")+msg;
+}
+
+// --- PROCESAR ---
+window.procesar=function(){
+  const el=document.getElementById("log-proceso");
+  el.style.display="block";el.textContent="";
+  log("Iniciando cálculo...");
+  log(`Archivos: ${PAQUETES_LOTES.map(l=>l.nombre).join(" + ")}`);
+
+  // detectar columnas dinámicamente
+  const sample=(PAQUETES_LOTES[0]?.filas[0])||{};
+  const keys=Object.keys(sample);
+  function findCol(...names){return names.find(n=>keys.some(k=>k.toLowerCase()===n.toLowerCase()));}
+  const colCliente=findCol("Cliente","cliente")||"Cliente";
+  const colTags=findCol("Tags","tags")||"Tags";
+  const colNombreCP=findCol("Nombre CP","nombre cp")||"Nombre CP";
+  const colComuna=findCol("Comuna","comuna")||"Comuna";
+  const colEstado=findCol("Estado sistema","estado sistema")||"Estado sistema";
+  log(`Columnas detectadas: Cliente="${colCliente}", Tags="${colTags}", CP="${colNombreCP}", Comuna="${colComuna}", Estado="${colEstado}"`);
+
+  const cobros={};
+  INCIDENCIAS=[];
+  let completados=0,omitidos=0,sinmatch=0,tabla=0,sintarifa=0;
+
+  // Combinar todos los lotes
+  const todasFilas=PAQUETES_LOTES.flatMap(l=>l.filas.map(f=>({...f,_fuente:l.nombre})));
+  log(`✓ Total filas combinadas: ${todasFilas.toLocaleString?todasFilas.length.toLocaleString():todasFilas.length}`);
+  todasFilas.forEach((row,idx)=>{
+    const estado=String(row[colEstado]||"");
+    if(estado!=="Completado"){omitidos++;return;}
+    completados++;
+
+    const clienteRaw=String(row[colCliente]||"");
+    const nombreCP=String(row[colNombreCP]||"");
+    const tags=String(row[colTags]||"");
+    const comuna=String(row[colComuna]||"");
+
+    // determinar cliente real
+    const origenNk=nk(clienteRaw.split(" ")[0]);
+    const esIntegrador=INTEGRADORES.includes(origenNk);
+    const clienteReal=esIntegrador?nombreCP:clienteRaw;
+    const origenLabel=esIntegrador?clienteRaw.split(" ")[0].toUpperCase():"RECIBELO";
+
+    // buscar en tarifas
+    const ck=nk(clienteReal);
+    const tarifa=buscarTarifa(ck,origenLabel);
+    if(!tarifa){
+      sinmatch++;
+      INCIDENCIAS.push({tipo:"SIN_MATCH",cliente:clienteReal,origen:origenLabel,detalle:`Fila ${idx+2}`,fuente:row._fuente||""});
+      if(!cobros[ck])cobros[ck]={nombre:clienteReal,origen:origenLabel,pkts:0,sd:0,nd:0,turbo:0,recargos:0,total:0,incids:0};
+      cobros[ck].pkts++;cobros[ck].incids++;
+      return;
+    }
+
+    const zona=detectZona(comuna);
+    const{serv,tam}=detectServicio(tags);
+    const{base,recargo,incid}=calcTarifa(tarifa,serv,zona,tam);
+
+    if(incid==="TABLA"){tabla++;INCIDENCIAS.push({tipo:"TABLA",cliente:clienteReal,origen:origenLabel,detalle:`fila ${idx+2} — ${serv} ${zona}`,fuente:row._fuente||""});}
+    if(incid==="SIN_TARIFA"){sintarifa++;INCIDENCIAS.push({tipo:"SIN_TARIFA",cliente:clienteReal,origen:origenLabel,detalle:`${serv} ${zona}${tam?" "+tam:""}`,fuente:row._fuente||""});}
+
+    if(!cobros[ck])cobros[ck]={nombre:tarifa.nombre,origen:origenLabel,pkts:0,sd:0,nd:0,turbo:0,recargos:0,total:0,incids:0};
+    cobros[ck].pkts++;
+    if(serv==="TURBO")cobros[ck].turbo+=base;
+    else if(serv==="NEXTDAY")cobros[ck].nd+=base;
+    else cobros[ck].sd+=base;
+    cobros[ck].recargos+=recargo;
+    cobros[ck].total+=base+recargo;
+    if(incid)cobros[ck].incids++;
+  });
+
+  RESULTADOS=Object.values(cobros).sort((a,b)=>b.total-a.total);
+  log(`✓ Completados: ${completados.toLocaleString()} | Omitidos: ${omitidos.toLocaleString()}`);
+  log(`⚠ Sin match: ${sinmatch} | TABLA: ${tabla} | Sin tarifa: ${sintarifa}`);
+  log(`✓ ${RESULTADOS.length} clientes procesados`);
+
+  renderCobros();
+  renderIncidencias();
+
+  // Mostrar botones
+  document.getElementById("btn-cerrar-mes").style.display="block";
+
+  // cambiar a pestaña cobros
+  document.querySelectorAll(".tab").forEach((t,i)=>{if(i===0)t.click();});
+};
+
+async function cargarAliases(){
+  try{
+    const snap=await getDocs(collection(db,"fin_aliases"));
+    ALIASES={};ALIASES_RAW=[];
+    snap.forEach(d=>{
+      const data=d.data();
+      ALIASES[d.id]=data.hacia_key; // nk(nombrePaquetes) → key en fin_tarifas_clientes
+      ALIASES_RAW.push({...data,_id:d.id});
+    });
+  }catch(e){console.warn("Aliases no cargados:",e.message);}
+}
+
+function buscarTarifa(clienteNk, origenLabel){
+  // 0. alias mapeado manualmente
+  if(ALIASES[clienteNk]){
+    const aliasKey=ALIASES[clienteNk];
+    if(TARIFAS[aliasKey])return TARIFAS[aliasKey];
+  }
+  // 1. exacto: origen_nombre
+  const k1=(origenLabel||"").toLowerCase()+"_"+clienteNk;
+  if(TARIFAS[k1])return TARIFAS[k1];
+  // 2. solo nombre
+  if(TARIFAS[clienteNk])return TARIFAS[clienteNk];
+  // 3. cualquier origen con ese nombre
+  const k3=Object.keys(TARIFAS).find(k=>k.endsWith("_"+clienteNk)||k===clienteNk);
+  if(k3)return TARIFAS[k3];
+  // 4. código numérico al inicio
+  const cod=clienteNk.match(/^(\d+)/);
+  if(cod){const k4=Object.keys(TARIFAS).find(k=>k.includes(cod[1]));if(k4)return TARIFAS[k4];}
+  // 5. fallback al integrador mismo (ej: Nombre CP "Jose Pablo" bajo ALAS → busca ALAS SPA)
+  if(origenLabel){
+    const oNk=nk(origenLabel);
+    if(TARIFAS[oNk])return TARIFAS[oNk];
+    // buscar case-insensitive: la clave puede ser "ALAS_alas spa" (origen en mayus desde Excel)
+    const k5=Object.keys(TARIFAS).find(k=>{const kl=k.toLowerCase();return kl===oNk||kl.endsWith("_"+oNk)||kl.startsWith(oNk+"_");});
+    if(k5)return TARIFAS[k5];
+  }
+  return null;
+}
+
+// --- RENDER COBROS ---
+function renderCobros(){
+  document.getElementById("cobros-empty").style.display="none";
+  document.getElementById("cobros-resultado").style.display="block";
+
+  const tot=RESULTADOS.reduce((a,r)=>a+r.total,0);
+  const pkts=RESULTADOS.reduce((a,r)=>a+r.pkts,0);
+  const clientes=RESULTADOS.length;
+  document.getElementById("kpi-row").innerHTML=`
+    <div class="kpi verde"><div class="kpi-label">Total a cobrar</div><div class="kpi-value">$${fmt(tot)}</div></div>
+    <div class="kpi azul"><div class="kpi-label">Clientes</div><div class="kpi-value">${clientes}</div></div>
+    <div class="kpi amarillo"><div class="kpi-label">Paquetes cobrados</div><div class="kpi-value">${fmt(pkts)}</div></div>
+    <div class="kpi rojo"><div class="kpi-label">Incidencias</div><div class="kpi-value">${INCIDENCIAS.length}</div></div>`;
+  filtrarTabla();
+}
+
+window.filtrarTabla=function(){
+  const q=nk(document.getElementById("search-cliente").value);
+  const orig=(document.getElementById("filtro-origen").value||"").toUpperCase();
+  const filas=RESULTADOS.filter(r=>(!q||nk(r.nombre).includes(q))&&(!orig||r.origen===orig));
+  document.getElementById("tbody-cobros").innerHTML=filas.length?filas.map(r=>`
+    <tr>
+      <td style="font-weight:600">${r.nombre}${r.incids?` <span style="color:var(--amarillo);font-size:11px">⚠ ${r.incids}</span>`:""}</td>
+      <td><span class="badge-orig badge-${r.origen}">${r.origen}</span></td>
+      <td class="monto">${fmt(r.pkts)}</td>
+      <td class="monto">${r.sd?("$"+fmt(r.sd)):"—"}</td>
+      <td class="monto">${r.nd?("$"+fmt(r.nd)):"—"}</td>
+      <td class="monto">${r.turbo?("$"+fmt(r.turbo)):"—"}</td>
+      <td class="monto">${r.recargos?("$"+fmt(r.recargos)):"—"}</td>
+      <td class="monto total">$${fmt(r.total)}</td>
+    </tr>`).join(""):`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>`;
+};
+
+// --- RENDER INCIDENCIAS ---
+function renderIncidencias(){
+  const badge=document.getElementById("badge-incid");
+  if(INCIDENCIAS.length){badge.style.display="inline";badge.textContent=INCIDENCIAS.length;}
+  else{badge.style.display="none";}
+
+  const el=document.getElementById("incid-resultado");
+  if(!INCIDENCIAS.length){
+    document.getElementById("incid-empty").style.display="block";
+    el.style.display="none";return;
+  }
+  document.getElementById("incid-empty").style.display="none";
+  el.style.display="block";
+
+  const sinMatch=INCIDENCIAS.filter(i=>i.tipo==="SIN_MATCH");
+  const tablas=INCIDENCIAS.filter(i=>i.tipo==="TABLA");
+  const sinTar=INCIDENCIAS.filter(i=>i.tipo==="SIN_TARIFA");
+
+  let html="";
+  if(sinMatch.length){
+  // Agrupar por cliente para no listar fila por fila
+  const smGrupos={};
+  sinMatch.forEach(i=>{
+    const k=i.cliente+"|"+i.origen;
+    if(!smGrupos[k])smGrupos[k]={cliente:i.cliente,origen:i.origen,fuentes:new Set(),cnt:0};
+    smGrupos[k].cnt++;
+    if(i.fuente)smGrupos[k].fuentes.add(i.fuente);
+  });
+  const smRows=Object.values(smGrupos).sort((a,b)=>b.cnt-a.cnt);
+  html+=`<div class="incid-section"><div class="incid-title">Sin match en tarifas <span class="incid-count">${sinMatch.length} paquetes · ${smRows.length} clientes</span></div><div class="incid-list">${smRows.map(g=>`<div class="incid-row" style="justify-content:space-between"><div style="display:flex;align-items:center;gap:10px;flex:1;min-width:0"><span class="incid-tag tag-sinmatch">SIN MATCH</span><span style="font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${g.cliente}</span><span style="color:var(--muted);font-size:11px;white-space:nowrap">${g.origen} · ${g.cnt} paquetes${g.fuentes.size?' · '+[...g.fuentes].join(", "):""}</span></div><button onclick="abrirAlias('${g.cliente.replace(/'/g,"\\'")}','${g.origen}')" style="background:var(--azul);color:#fff;border:none;border-radius:6px;padding:4px 10px;font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0">Mapear →</button></div>`).join("")}</div></div>`;
+}
+  if(tablas.length){html+=`<div class="incid-section"><div class="incid-title">Tarifa TABLA (manual) <span class="incid-count warn">${tablas.length}</span></div><div class="incid-list">${tablas.slice(0,50).map(i=>`<div class="incid-row"><span class="incid-tag tag-tabla">TABLA</span><span>${i.cliente}</span><span style="color:var(--muted);font-size:11px">${i.detalle}${i.fuente?' · '+i.fuente:''}</span></div>`).join("")}</div></div>`;}
+  if(sinTar.length){html+=`<div class="incid-section"><div class="incid-title">Sin tarifa configurada <span class="incid-count">${sinTar.length}</span></div><div class="incid-list">${sinTar.slice(0,50).map(i=>`<div class="incid-row"><span class="incid-tag tag-sintarifa">SIN TARIFA</span><span>${i.cliente}</span><span style="color:var(--muted);font-size:11px">${i.detalle}</span></div>`).join("")}</div></div>`;}
+  el.innerHTML=html;
+}
+
+// --- EXPORT EXCEL ---
+window.exportarExcel=function(){
+  const ws=XLSX.utils.json_to_sheet(RESULTADOS.map(r=>({
+    "Cliente":r.nombre,"Origen":r.origen,"Paquetes":r.pkts,
+    "Sameday":r.sd,"Next Day":r.nd,"Turbo":r.turbo,
+    "Recargos":r.recargos,"Total":r.total,"Incidencias":r.incids
+  })));
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,"Cobros",ws);
+  if(INCIDENCIAS.length){
+    const wi=XLSX.utils.json_to_sheet(INCIDENCIAS.map(i=>({Tipo:i.tipo,Cliente:i.cliente,Origen:i.origen,Detalle:i.detalle})));
+    XLSX.utils.book_append_sheet(wb,"Incidencias",wi);
+  }
+  XLSX.writeFile(wb,`Cobros_Clientes_${new Date().toISOString().slice(0,10)}.xlsx`);
+};
+
+// --- ALIASES ---
+window.abrirAlias=function(cliente, origen){
+  _aliasTarget={cliente, origen};
+  document.getElementById("alias-desde").textContent=`"${cliente}" (${origen})`;
+  document.getElementById("alias-search").value="";
+  document.getElementById("alias-lista").innerHTML="";
+  document.getElementById("alias-btn-guardar").disabled=true;
+  document.getElementById("alias-modal").style.display="flex";
+  filtrarAliasOpciones();
+  document.getElementById("alias-search").focus();
+};
+
+window.cerrarAlias=function(){
+  document.getElementById("alias-modal").style.display="none";
+  _aliasTarget=null;
+};
+
+window.filtrarAliasOpciones=function(){
+  const q=nk(document.getElementById("alias-search").value);
+  const lista=q
+    ? TARIFAS_RAW.filter(t=>nk(t.nombre||"").includes(q)||nk(t.origen||"").includes(q))
+    : TARIFAS_RAW.slice(0,60);
+  document.getElementById("alias-lista").innerHTML=lista.slice(0,80).map(t=>`
+    <div class="alias-opcion" onclick="seleccionarAlias('${t._key.replace(/'/g,"\\'")}','${(t.nombre||"").replace(/'/g,"\\'")}')" title="${t.nombre||""} · ${t.origen||""}">
+      <span style="font-weight:600;font-size:13px">${t.nombre||"—"}</span>
+      <span class="badge-orig badge-${t.origen||""}" style="font-size:10px">${t.origen||"—"}</span>
+    </div>`).join("")||"<div style='color:var(--muted);padding:8px'>Sin resultados</div>";
+};
+
+let _aliasSelKey=null,_aliasSelNombre=null;
+window.seleccionarAlias=function(key,nombre){
+  _aliasSelKey=key;_aliasSelNombre=nombre;
+  document.querySelectorAll(".alias-opcion").forEach(el=>el.classList.remove("selected"));
+  event.currentTarget.classList.add("selected");
+  document.getElementById("alias-btn-guardar").disabled=false;
+};
+
+window.guardarAlias=async function(){
+  if(!_aliasTarget||!_aliasSelKey)return;
+  const btn=document.getElementById("alias-btn-guardar");
+  btn.disabled=true;btn.textContent="Guardando...";
+  try{
+    const desdeKey=nk(_aliasTarget.cliente);
+    const aliasDoc={
+      desde:_aliasTarget.cliente,
+      desde_nk:desdeKey,
+      origen:_aliasTarget.origen,
+      hacia_key:_aliasSelKey,
+      hacia_nombre:_aliasSelNombre,
+      creado:new Date().toISOString()
+    };
+    await setDoc(doc(db,"fin_aliases",desdeKey),aliasDoc);
+    ALIASES[desdeKey]=_aliasSelKey;
+    ALIASES_RAW=ALIASES_RAW.filter(a=>a._id!==desdeKey);
+    ALIASES_RAW.push({...aliasDoc,_id:desdeKey});
+    cerrarAlias();
+    // Re-procesar automáticamente si hay datos
+    if(PAQUETES_LOTES.length){
+      log("♻ Re-procesando con nuevo alias...");
+      procesar();
+    }
+  }catch(e){
+    alert("Error guardando alias: "+e.message);
+    btn.disabled=false;btn.textContent="Guardar alias";
+  }
+};
+
+// --- REEMBOLSOS ---
+let REEMBOLSOS_RAW=[];
+let _rbClienteSel=null;
+let _currentUser=null;
+
+function periodoActual(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0");}
+
+async function cargarReembolsosFS(){
+  const periodo=document.getElementById("rb-filtro-periodo").value||periodoActual();
+  try{
+    const snap=await getDocs(collection(db,"fin_reembolsos"));
+    REEMBOLSOS_RAW=[];
+    snap.forEach(d=>{const data=d.data();REEMBOLSOS_RAW.push({...data,_id:d.id});});
+    renderReembolsos(periodo);
+  }catch(e){console.warn("Error reembolsos:",e.message);}
+}
+
+function renderReembolsos(periodo){
+  const items=REEMBOLSOS_RAW.filter(r=>!periodo||r.periodo===periodo).sort((a,b)=>b.creado_fecha?.localeCompare?.(a.creado_fecha||"")||0);
+  const total=items.reduce((s,r)=>s+(r.monto||0),0);
+  document.getElementById("rb-total-periodo").textContent=items.length?`Total: $${fmt(total)}`:"";
+  const tbody=document.getElementById("tbody-reembolsos");
+  const empty=document.getElementById("rb-empty");
+  if(!items.length){tbody.innerHTML="";empty.style.display="block";return;}
+  empty.style.display="none";
+  tbody.innerHTML=items.map(r=>`<tr>
+    <td style="white-space:nowrap">${r.periodo||"—"}</td>
+    <td style="font-weight:600">${r.cliente_nombre||"—"}</td>
+    <td><span class="badge-orig badge-${r.origen||""}">${r.origen||"—"}</span></td>
+    <td><span style="background:rgba(239,68,68,0.15);color:var(--rojo);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${r.motivo||"—"}</span></td>
+    <td style="text-align:right;font-weight:700;color:var(--rojo)">$${fmt(r.monto||0)}</td>
+    <td style="font-size:12px;color:var(--muted2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.descripcion||""}">${r.descripcion||"—"}</td>
+    <td><button onclick="eliminarReembolso('${r._id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px" title="Eliminar">🗑</button></td>
+  </tr>`).join("");
+}
+
+window.filtrarRBClientes=function(){
+  const q=nk(document.getElementById("rb-cliente-search").value);
+  if(!q){document.getElementById("rb-cliente-drop").style.display="none";return;}
+  const lista=(q?TARIFAS_RAW.filter(t=>nk(t.nombre||"").includes(q)):TARIFAS_RAW).slice(0,30);
+  const drop=document.getElementById("rb-cliente-drop");
+  drop.style.display=lista.length?"block":"none";
+  drop.innerHTML=lista.map(t=>`<div onclick="selRBCliente('${t._key.replace(/'/g,"\\'")}','${(t.nombre||"").replace(/'/g,"\\'")}','${(t.origen||"")}')}"
+    style="padding:8px 12px;cursor:pointer;font-size:13px;border-radius:6px" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">
+    <span style="font-weight:600">${t.nombre||"—"}</span>
+    <span class="badge-orig badge-${t.origen||""}" style="font-size:10px;margin-left:6px">${t.origen||""}</span>
+  </div>`).join("");
+};
+
+window.selRBCliente=function(key,nombre,origen){
+  _rbClienteSel={key,nombre,origen};
+  document.getElementById("rb-cliente-search").value=nombre;
+  document.getElementById("rb-cliente-key").value=key;
+  document.getElementById("rb-cliente-nombre").value=nombre;
+  document.getElementById("rb-cliente-origen").value=origen;
+  document.getElementById("rb-cliente-drop").style.display="none";
+};
+
+window.guardarReembolso=async function(){
+  const periodo=document.getElementById("rb-periodo").value;
+  const monto=parseFloat(document.getElementById("rb-monto").value)||0;
+  const motivo=document.getElementById("rb-motivo").value;
+  const desc=document.getElementById("rb-descripcion").value.trim();
+  const cKey=document.getElementById("rb-cliente-key").value;
+  const cNombre=document.getElementById("rb-cliente-nombre").value;
+  const cOrigen=document.getElementById("rb-cliente-origen").value;
+  const msg=document.getElementById("rb-msg");
+  if(!periodo||!cKey||!monto){msg.style.color="var(--rojo)";msg.textContent="Completa período, cliente y monto.";return;}
+  msg.style.color="var(--muted2)";msg.textContent="Guardando...";
+  const id="rb_"+Date.now();
+  const data={cliente_key:cKey,cliente_nombre:cNombre,origen:cOrigen,
+    monto,motivo,descripcion:desc,periodo,
+    creado_por:_currentUser?.email||"",creado_fecha:new Date().toISOString()};
+  try{
+    await setDoc(doc(db,"fin_reembolsos",id),data);
+    REEMBOLSOS_RAW.push({...data,_id:id});
+    renderReembolsos(document.getElementById("rb-filtro-periodo").value||periodo);
+    msg.style.color="var(--verde)";msg.textContent="✓ Guardado correctamente";
+    document.getElementById("rb-monto").value="";
+    document.getElementById("rb-descripcion").value="";
+    setTimeout(()=>msg.textContent="",3000);
+  }catch(e){msg.style.color="var(--rojo)";msg.textContent="Error: "+e.message;}
+};
+
+window.eliminarReembolso=async function(id){
+  if(!confirm("¿Eliminar este reembolso?"))return;
+  try{
+    await deleteDoc(doc(db,"fin_reembolsos",id));
+    REEMBOLSOS_RAW=REEMBOLSOS_RAW.filter(r=>r._id!==id);
+    renderReembolsos(document.getElementById("rb-filtro-periodo").value||periodoActual());
+  }catch(e){alert("Error: "+e.message);}
+};
+
+function getReembolsosPorCliente(periodo){
+  // Agrupa reembolsos del período por cliente_key → {total, items[]}
+  const out={};
+  REEMBOLSOS_RAW.filter(r=>!periodo||r.periodo===periodo).forEach(r=>{
+    const k=r.cliente_key;
+    if(!out[k])out[k]={total:0,items:[]};
+    out[k].total+=r.monto||0;
+    out[k].items.push(r);
+  });
+  return out;
+}
+
+// --- PDF POR CLIENTE ---
+window.toggleMenuPDF=function(){
+  const m=document.getElementById("menu-pdf");
+  m.style.display=m.style.display==="none"?"block":"none";
+};
+document.addEventListener("click",e=>{
+  if(!e.target.closest("#btn-pdf-menu")&&!e.target.closest("#menu-pdf"))
+    document.getElementById("menu-pdf").style.display="none";
+});
+
+function generarPDFCliente(cliente,rbPorCliente,periodo){
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:"portrait",unit:"mm",format:"a4"});
+  const W=210,mg=18;
+  let y=18;
+  // Header
+  doc.setFillColor(15,17,23);doc.rect(0,0,W,30,"F");
+  doc.setFontSize(16);doc.setFont("helvetica","bold");doc.setTextColor(226,232,240);
+  doc.text("RECÍBELO — PRE-FACTURA",mg,13);
+  doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(100,116,139);
+  doc.text("Documento de revisión. No constituye documento tributario.",mg,20);
+  y=36;
+  // Período
+  const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const [yr,mo]=periodo.split("-");
+  doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(226,232,240);
+  doc.text(`Período: ${meses[parseInt(mo)-1]} ${yr}`,mg,y);
+  doc.text(`Fecha emisión: ${new Date().toLocaleDateString("es-CL")}`,W-mg,y,{align:"right"});
+  y+=8;
+  // Cliente
+  doc.setFillColor(26,29,39);doc.rect(mg-2,y-4,W-2*mg+4,14,"F");
+  doc.setFontSize(12);doc.setFont("helvetica","bold");doc.setTextColor(226,232,240);
+  doc.text(cliente.nombre,mg,y+4);
+  doc.setFontSize(9);doc.setFont("helvetica","normal");doc.setTextColor(100,116,139);
+  doc.text(cliente.origen,mg,y+9);
+  y+=20;
+  // Tabla cobros
+  doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(226,232,240);
+  doc.text("COBROS POR SERVICIO",mg,y);y+=4;
+  const rows=[];
+  if(cliente.sd)rows.push(["Sameday","$"+fmt(cliente.sd)]);
+  if(cliente.nd)rows.push(["Next Day","$"+fmt(cliente.nd)]);
+  if(cliente.turbo)rows.push(["Turbo","$"+fmt(cliente.turbo)]);
+  if(cliente.recargos)rows.push(["Recargos por tamaño","$"+fmt(cliente.recargos)]);
+  rows.push([{content:"TOTAL A COBRAR",styles:{fontStyle:"bold",fillColor:[26,29,39]}},{content:"$"+fmt(cliente.total),styles:{fontStyle:"bold",fillColor:[26,29,39],textColor:[34,197,94]}}]);
+  doc.autoTable({startY:y,margin:{left:mg,right:mg},
+    head:[["Concepto","Monto"]],body:rows,
+    styles:{fontSize:10,cellPadding:4,textColor:[226,232,240],fillColor:[26,29,39],lineColor:[42,47,69],lineWidth:0.2},
+    headStyles:{fillColor:[42,47,69],fontStyle:"bold"},
+    columnStyles:{1:{halign:"right"}},
+    theme:"grid"});
+  y=doc.lastAutoTable.finalY+8;
+  // Reembolsos
+  const rb=rbPorCliente[cliente.nombre&&nk(cliente.nombre)]||rbPorCliente[nk(cliente.nombre||"")]||null;
+  // Try to find by key
+  const rbData=Object.entries(rbPorCliente).find(([k])=>k===nk(cliente.nombre||"")||k===cliente._key);
+  if(rbData&&rbData[1].items.length){
+    doc.setFontSize(10);doc.setFont("helvetica","bold");doc.setTextColor(239,68,68);
+    doc.text("REEMBOLSOS / INDEMNIZACIONES",mg,y);
+    doc.setFontSize(8);doc.setFont("helvetica","italic");doc.setTextColor(100,116,139);
+    doc.text("(Informativos — a confirmar con finanzas)",mg+60,y);
+    y+=4;
+    const rbRows=rbData[1].items.map(r=>[r.motivo,r.descripcion||"—","$"+fmt(r.monto||0)]);
+    rbRows.push([{content:"Total reembolsos",styles:{fontStyle:"bold",fillColor:[26,29,39],colspan:2}},{content:"$"+fmt(rbData[1].total),styles:{fontStyle:"bold",textColor:[239,68,68]}}]);
+    doc.autoTable({startY:y,margin:{left:mg,right:mg},
+      head:[["Motivo","Descripción","Monto"]],body:rbRows,
+      styles:{fontSize:9,cellPadding:3,textColor:[226,232,240],fillColor:[26,29,39],lineColor:[42,47,69],lineWidth:0.2},
+      headStyles:{fillColor:[60,20,20],fontStyle:"bold",textColor:[239,68,68]},
+      columnStyles:{2:{halign:"right"}},
+      theme:"grid"});
+    y=doc.lastAutoTable.finalY+6;
+  }
+  // Paquetes y footer
+  doc.setFontSize(8);doc.setTextColor(100,116,139);
+  doc.text(`Total paquetes cobrados: ${cliente.pkts.toLocaleString("es-CL")}`,mg,y);
+  y+=10;
+  doc.setDrawColor(42,47,69);doc.line(mg,y,W-mg,y);y+=5;
+  doc.text("Este documento es una pre-factura para revisión. No tiene valor tributario. — Recíbelo SpA",mg,y);
+  return doc;
+}
+
+window.exportarPDFCliente=function(){
+  if(!RESULTADOS.length){alert("Primero procesa los datos.");return;}
+  const nombre=prompt("Nombre del cliente (o parte del nombre):");
+  if(!nombre)return;
+  const cl=RESULTADOS.find(r=>nk(r.nombre).includes(nk(nombre)));
+  if(!cl){alert("Cliente no encontrado.");return;}
+  const periodo=periodoActual();
+  const rbMap=getReembolsosPorCliente(periodo);
+  generarPDFCliente(cl,rbMap,periodo).save(`PreFactura_${cl.nombre.replace(/[^a-zA-Z0-9]/g,"_")}_${periodo}.pdf`);
+};
+
+window.exportarZIPTodos=async function(){
+  if(!RESULTADOS.length){alert("Primero procesa los datos.");return;}
+  const periodo=periodoActual();
+  const rbMap=getReembolsosPorCliente(periodo);
+  const zip=new JSZip();
+  const btn=document.getElementById("btn-pdf-menu");
+  btn.disabled=true;btn.textContent="⏳ Generando...";
+  for(const cl of RESULTADOS){
+    if(!cl.total)continue;
+    const pdf=generarPDFCliente(cl,rbMap,periodo);
+    const bytes=pdf.output("arraybuffer");
+    zip.file(`PreFactura_${cl.nombre.replace(/[^a-zA-Z0-9]/g,"_")}_${periodo}.pdf`,bytes);
+  }
+  const blob=await zip.generateAsync({type:"blob"});
+  const a=document.createElement("a");a.href=URL.createObjectURL(blob);
+  a.download=`PreFacturas_${periodo}.zip`;a.click();
+  btn.disabled=false;btn.textContent="📄 PDF ▾";
+};
+
+// --- CERRAR MES ---
+window.abrirCierreMes=function(){
+  document.getElementById("cierre-modal").style.display="flex";
+  const p=document.getElementById("cierre-periodo");
+  if(!p.value)p.value=periodoActual();
+};
+window.cerrarCierreModal=function(){document.getElementById("cierre-modal").style.display="none";};
+
+window.confirmarCierre=async function(){
+  const periodo=document.getElementById("cierre-periodo").value;
+  if(!periodo){alert("Selecciona un período.");return;}
+  if(!confirm(`¿Cerrar el mes ${periodo}? Esto guardará el resumen actual en Firebase.`))return;
+  const btn=document.querySelector("#cierre-modal button[onclick='confirmarCierre()']");
+  if(btn){btn.disabled=true;btn.textContent="Guardando...";}
+  try{
+    const rbMap=getReembolsosPorCliente(periodo);
+    const totalRb=Object.values(rbMap).reduce((s,v)=>s+v.total,0);
+    const data={
+      periodo,
+      fecha_cierre:new Date().toISOString(),
+      cerrado_por:_currentUser?.email||"",
+      total:RESULTADOS.reduce((s,r)=>s+r.total,0),
+      total_reembolsos:totalRb,
+      clientes:RESULTADOS.length,
+      paquetes:RESULTADOS.reduce((s,r)=>s+r.pkts,0),
+      incidencias:INCIDENCIAS.length,
+      fuentes:PAQUETES_LOTES.map(l=>l.nombre),
+      detalle:RESULTADOS.map(r=>({...r}))
+    };
+    await setDoc(doc(db,"fin_facturacion",periodo),data);
+    document.getElementById("cierre-modal").style.display="none";
+    alert(`✅ Mes ${periodo} guardado correctamente en Firebase.\nTotal: $${fmt(data.total)} · ${data.clientes} clientes · ${data.paquetes.toLocaleString()} paquetes`);
+  }catch(e){
+    alert("Error al guardar: "+e.message);
+    if(btn){btn.disabled=false;btn.textContent="Guardar";}
+  }
+};
+
+// --- SORTING ---
+let _sortCobros={key:"total",dir:-1};
+let _sortTarifas={key:"nombre",dir:1};
+
+function updateSortHeaders(tableId,key,dir){
+  document.querySelectorAll("#"+tableId+" th.sortable").forEach(th=>{
+    th.classList.remove("sort-asc","sort-desc");
+    if(th.getAttribute("onclick")&&th.getAttribute("onclick").includes("'"+key+"'")){
+      th.classList.add(dir===1?"sort-asc":"sort-desc");
+    }
+  });
+}
+
+window.sortCobros=function(key){
+  if(_sortCobros.key===key)_sortCobros.dir*=-1;
+  else{_sortCobros.key=key;_sortCobros.dir=key==="nombre"||key==="origen"?1:-1;}
+  filtrarTabla();
+  updateSortHeaders("tbody-cobros",key,_sortCobros.dir);
+};
+
+window.sortTarifas=function(key){
+  if(_sortTarifas.key===key)_sortTarifas.dir*=-1;
+  else{_sortTarifas.key=key;_sortTarifas.dir=key==="nombre"||key==="origen"?1:-1;}
+  filtrarTarifas();
+  updateSortHeaders("tbody-tarifas",key,_sortTarifas.dir);
+};
+
+
+</script>
+
+<!-- MODAL CIERRE MES -->
+<div id="cierre-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface,var(--card));border:1px solid var(--border);border-radius:14px;padding:28px;width:min(420px,95vw);display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700">✅ Cerrar mes</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Guarda el resumen del período en Firebase como respaldo permanente.</div>
+      </div>
+      <button onclick="cerrarCierreModal()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div>
+      <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:6px">PERÍODO A CERRAR</label>
+      <input type="month" id="cierre-periodo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:14px">
+    </div>
+    <div style="background:rgba(34,197,94,0.08);border:1px solid rgba(34,197,94,0.2);border-radius:8px;padding:12px;font-size:12px;color:var(--muted2)">
+      Se guardarán: totales, detalle por cliente, incidencias, reembolsos del período y los archivos usados.<br>El registro quedará en Firestore en <code style="color:var(--verde)">fin_facturacion/{periodo}</code>.
+    </div>
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="cerrarCierreModal()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer">Cancelar</button>
+      <button onclick="confirmarCierre()" style="background:var(--verde);color:#000;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:700;cursor:pointer">Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL ALIAS -->
+<div id="alias-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">
+  <div style="background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:28px;width:min(520px,95vw);max-height:85vh;display:flex;flex-direction:column;gap:16px">
+    <div style="display:flex;align-items:center;justify-content:space-between">
+      <div>
+        <div style="font-size:15px;font-weight:700;color:var(--text)">Mapear cliente</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:3px">Nombre en Excel de paquetes:</div>
+        <div id="alias-desde" style="font-size:13px;color:var(--azul);font-weight:600;margin-top:2px"></div>
+      </div>
+      <button onclick="cerrarAlias()" style="background:none;border:none;color:var(--muted);font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+
+    <div style="font-size:12px;color:var(--muted)">Selecciona el cliente correcto en la matriz de tarifas. Este mapeo se guarda en Firebase y se aplica automáticamente en futuros cálculos.</div>
+
+    <div style="position:relative">
+      <input id="alias-search" type="text" placeholder="Buscar cliente en tarifas..." oninput="filtrarAliasOpciones()"
+        style="width:100%;box-sizing:border-box;background:var(--card);border:1px solid var(--border);border-radius:8px;padding:10px 14px;color:var(--text);font-size:13px;outline:none">
+    </div>
+
+    <div id="alias-lista" style="flex:1;overflow-y:auto;max-height:320px;display:flex;flex-direction:column;gap:4px;border:1px solid var(--border);border-radius:8px;padding:6px;background:var(--bg)">
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end">
+      <button onclick="cerrarAlias()" style="background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 18px;font-size:13px;cursor:pointer">Cancelar</button>
+      <button id="alias-btn-guardar" onclick="guardarAlias()" disabled
+        style="background:var(--azul);color:#fff;border:none;border-radius:8px;padding:9px 18px;font-size:13px;font-weight:600;cursor:pointer;opacity:0.5">Guardar alias</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.alias-opcion{display:flex;align-items:center;justify-content:space-between;padding:9px 12px;border-radius:7px;cursor:pointer;border:1px solid transparent;gap:8px;transition:background 0.1s}
+.alias-opcion:hover{background:var(--card);border-color:var(--border)}
+.alias-opcion.selected{background:rgba(91,131,243,0.15);border-color:var(--azul)}
+#alias-btn-guardar:not([disabled]){opacity:1}
+</style>
+</body>
+</html>
