@@ -28,12 +28,13 @@ ui-debug.log
 Thumbs.db
 desktop.ini
 
-# ── Carpetas de documentos de proceso ─────────
-CX/
-Comercial/
-Finanzas/
-Operaciones/
-Proyectos/
+# ── Carpetas de documentos de proceso (raíz) ──
+/CX/
+/Comercial/
+/Finanzas/
+/Operaciones/
+/Proyectos/
+/Gestión de personas/
 
 # ── Scripts Python / txt locales ──────────────
 *.py
