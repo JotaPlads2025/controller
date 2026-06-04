@@ -1,0 +1,1025 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Recibelo — SLA CX</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e8eaf0;
+  --muted:#6b7280;--muted2:#9ca3af;--verde:#22c55e;--rojo:#ef4444;
+  --naranja:#f97316;--amarillo:#eab308;--accent:#3b82f6;
+  --fg:#e8eaf0;
+}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
+body{display:flex;flex-direction:column}
+#loading{display:flex;align-items:center;justify-content:center;flex:1;font-size:14px;color:var(--muted2)}
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 36px;text-align:center;width:340px}
+.login-card img{height:36px;margin-bottom:20px}
+.login-card h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.login-card p{color:var(--muted2);font-size:13px;margin-bottom:24px}
+.btn-login{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;transition:background .15s}
+.btn-login:hover{background:rgba(255,255,255,0.05)}
+.login-error{color:var(--rojo);font-size:12px;margin-top:10px;min-height:18px}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.badge-module{background:rgba(234,179,8,0.15);color:var(--amarillo);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.user-chip{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s}
+.user-chip:hover{background:rgba(255,255,255,0.05)}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--accent);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.user-name{font-size:12px;color:var(--muted2)}
+.app-shell{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted2);text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.nav-item.active{color:var(--text);border-left-color:var(--amarillo);background:rgba(234,179,8,0.08)}
+.app-content{flex:1;overflow-y:auto;padding:28px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px}
+.tab{padding:9px 16px;font-size:13px;font-weight:600;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--amarillo)}
+.tab-content{display:none}
+.tab-content.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px}
+.kpi-label{font-size:11px;color:var(--muted2);font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px}
+.kpi-value{font-size:24px;font-weight:800}
+.kpi-value.verde{color:var(--verde)}
+.kpi-value.rojo{color:var(--rojo)}
+.kpi-value.naranja{color:var(--naranja)}
+.kpi-value.amarillo{color:var(--amarillo)}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:var(--card);color:var(--muted2);font-weight:700;text-align:left;padding:9px 10px;border-bottom:2px solid var(--border);white-space:nowrap;position:sticky;top:0;z-index:2}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:middle}
+.data-table tr:hover td{background:rgba(255,255,255,0.02)}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:700;white-space:nowrap}
+.badge-ok{background:rgba(34,197,94,0.12);color:var(--verde)}
+.badge-rec{background:rgba(239,68,68,0.12);color:var(--rojo)}
+.badge-cli{background:rgba(234,179,8,0.12);color:var(--amarillo)}
+.badge-rev{background:rgba(249,115,22,0.12);color:var(--naranja)}
+.badge-pend{background:rgba(107,114,128,0.15);color:var(--muted2)}
+.upload-zone{display:flex;gap:16px;flex-wrap:wrap;margin:16px 0}
+.file-card{background:var(--card);border:2px dashed var(--border);border-radius:10px;padding:18px 24px;cursor:pointer;text-align:center;min-width:200px;flex:1;transition:border-color .15s;max-width:280px}
+.file-card:hover{border-color:var(--accent)}
+.file-card.loaded{border-color:var(--verde);border-style:solid}
+.file-card input{display:none}
+.file-card .fc-icon{font-size:28px;margin-bottom:6px}
+.file-card .fc-label{font-size:12px;font-weight:700;color:var(--text)}
+.file-card .fc-sub{font-size:11px;color:var(--muted2);margin-top:3px}
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:700;cursor:pointer;transition:opacity .15s}
+.btn:hover{opacity:.85}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.btn-primary{background:var(--accent);color:#fff}
+.btn-sm{padding:4px 10px;font-size:11px;font-weight:600;border-radius:6px;border:1px solid var(--border);background:transparent;cursor:pointer;color:var(--muted2)}
+.btn-sm:hover{background:rgba(255,255,255,0.05);color:var(--text)}
+.btn-sm.rec{border-color:var(--rojo);color:var(--rojo)}
+.btn-sm.cli{border-color:var(--amarillo);color:var(--amarillo)}
+.btn-sm.ok{border-color:var(--verde);color:var(--verde)}
+.table-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+.filter-bar{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:14px}
+.filter-bar select,.filter-bar input{background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:7px;font-size:12px}
+.toast{position:fixed;bottom:24px;right:24px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:12px 18px;font-size:13px;font-weight:600;z-index:9999;transition:opacity .3s;box-shadow:0 4px 20px rgba(0,0,0,.4)}
+.toast.ok{border-color:var(--verde);color:var(--verde)}
+.toast.err{border-color:var(--rojo);color:var(--rojo)}
+.empty-state{text-align:center;padding:48px 24px;color:var(--muted2)}
+.empty-state .es-icon{font-size:36px;margin-bottom:10px}
+.sla-bar{height:6px;border-radius:3px;background:var(--border);overflow:hidden;margin-top:4px;min-width:80px}
+.sla-bar-fill{height:100%;border-radius:3px;transition:width .3s}
+</style>
+</head>
+<body>
+
+<div id="loading" style="display:flex">Cargando...</div>
+
+<div id="login-screen">
+  <div class="login-card">
+    <img src="/logo.png" alt="Recibelo">
+    <h2>SLA CX</h2>
+    <p>Inicia sesión para acceder al módulo</p>
+    <button class="btn-login" onclick="signInWithMicrosoft()">
+      <svg width="16" height="16" viewBox="0 0 21 21" fill="none"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Iniciar con Microsoft
+    </button>
+    <button class="btn-login" onclick="signInWithGoogle()">
+      <svg width="16" height="16" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.5 2.7 13.5l7.9 6.1C12.5 13.3 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.7c-.6 3-2.3 5.5-4.8 7.2l7.5 5.8c4.4-4.1 7.1-10.1 7.1-17z"/><path fill="#FBBC05" d="M10.6 28.4A14.5 14.5 0 0 1 9.5 24c0-1.5.2-3 .6-4.4l-7.9-6.1A23.9 23.9 0 0 0 0 24c0 3.9.9 7.5 2.7 10.7l7.9-6.3z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.5-5.8c-2.2 1.5-5 2.3-8.4 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.5 42.4 14.6 48 24 48z"/></svg>
+      Iniciar con Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;flex-direction:column;flex:1">
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/logo.png" alt="Recibelo" style="height:28px">
+      <span class="badge-module">SLA CX</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div class="user-chip" onclick="doSignOut()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span class="user-name" id="user-name"></span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="nav-section">Módulos</div>
+      <a id="nav-controller"   href="/"               class="nav-item">📋 Controller</a>
+      <a id="nav-asistencia"   href="/asistencia_ruta" class="nav-item">🚚 Asistencia Ruta</a>
+      <a id="nav-operacional"  href="/operacional"     class="nav-item">⚙️ Operacional</a>
+      <a id="nav-finanzas"     href="/finanzas"        class="nav-item">💰 Finanzas</a>
+      <a href="/sla"                                   class="nav-item active">📊 SLA CX</a>
+    </nav>
+
+    <div class="app-content">
+      <div style="margin-bottom:20px">
+        <h1 style="font-size:22px;font-weight:800">SLA CX — Efectividad de Entregas</h1>
+        <p style="color:var(--muted2);font-size:13px;margin-top:4px">Carga los Excel de ingreso y/o egreso del día anterior para calcular el SLA por cliente.</p>
+      </div>
+
+      <div class="upload-zone">
+        <label class="file-card" id="card-ingreso">
+          <input type="file" id="file-ingreso" accept=".xlsx,.xls">
+          <div class="fc-icon">📥</div>
+          <div class="fc-label">Excel Ingreso</div>
+          <div class="fc-sub" id="sub-ingreso">Haz clic para cargar</div>
+        </label>
+        <label class="file-card" id="card-egreso">
+          <input type="file" id="file-egreso" accept=".xlsx,.xls">
+          <div class="fc-icon">📤</div>
+          <div class="fc-label">Excel Egreso</div>
+          <div class="fc-sub" id="sub-egreso">Haz clic para cargar</div>
+        </label>
+        <div style="display:flex;align-items:flex-end;padding-bottom:4px;gap:10px">
+          <button class="btn btn-primary" id="btn-analizar" onclick="analizar()">📊 Analizar</button>
+          <button class="btn" id="btn-exportar" onclick="exportarExcel()" style="display:none;background:var(--card);border:1px solid var(--border);color:var(--text)">⬇️ Exportar Excel</button>
+        </div>
+      </div>
+
+      <div id="sla-main" style="display:none">
+        <div class="tabs" id="tabs-sla">
+          <div class="tab active" onclick="switchTab('resumen',this)">📊 Resumen</div>
+          <div class="tab" onclick="switchTab('revision',this)">🔍 Revisión <span id="badge-rev" style="display:none;background:rgba(249,115,22,0.2);color:var(--naranja);border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px"></span></div>
+          <div class="tab" onclick="switchTab('detalle',this)">📦 Detalle completo</div>
+          <div class="tab" onclick="switchTab('reglas',this)">🧠 Reglas <span id="badge-reglas" style="display:none;background:rgba(99,102,241,.2);color:#818cf8;border-radius:10px;padding:1px 7px;font-size:11px;margin-left:4px"></span></div>
+        </div>
+
+        <div id="tab-resumen" class="tab-content active">
+          <div class="kpi-grid" id="kpi-grid"></div>
+          <div style="font-size:11px;color:var(--muted2);margin-bottom:10px">
+            📌 SLA = Completados ÷ (Total − Pend. − Inc. Recíbelo) · Ordenado de menor a mayor SLA
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead>
+                <tr id="thead-resumen">
+                  <th onclick="sortResumen('cli')" style="cursor:pointer" title="Ordenar por cliente">Cliente <span id="sort-cli"></span></th>
+                  <th onclick="sortResumen('total')" style="text-align:right;cursor:pointer" title="Ordenar por total">Total <span id="sort-total"></span></th>
+                  <th onclick="sortResumen('comp')" style="text-align:right;cursor:pointer">✅ Comp. <span id="sort-comp"></span></th>
+                  <th onclick="sortResumen('rec')" style="text-align:right;cursor:pointer">🔴 Recíbelo <span id="sort-rec"></span></th>
+                  <th onclick="sortResumen('cli_f')" style="text-align:right;cursor:pointer">🟡 Cliente <span id="sort-cli_f"></span></th>
+                  <th onclick="sortResumen('rev')" style="text-align:right;cursor:pointer">🟠 Revisar <span id="sort-rev"></span></th>
+                  <th onclick="sortResumen('pend')" style="text-align:right;cursor:pointer">⏳ Pend. <span id="sort-pend"></span></th>
+                  <th onclick="sortResumen('acido')" style="cursor:pointer;white-space:nowrap" title="Entregados / Total">% Ácido <span id="sort-acido"></span></th>
+                  <th onclick="sortResumen('ajustado')" style="cursor:pointer;white-space:nowrap" title="Entregados / (Entregados + Inc. Recíbelo)">% Ajustado <span id="sort-ajustado">▲</span></th>
+                </tr>
+              </thead>
+              <tbody id="tbody-resumen"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-revision" class="tab-content">
+          <p style="color:var(--muted2);font-size:12px;margin-bottom:14px">
+            Paquetes que requieren revisión manual. Ajusta la clasificación con los botones — el SLA se recalcula al instante.
+          </p>
+          <div class="table-wrap">
+            <table class="data-table" style="min-width:900px">
+              <thead>
+                <tr>
+                  <th>ID Interna</th><th>Cliente</th><th>Motivo no entrega</th>
+                  <th>Comentario conductor</th><th>Tags</th>
+                  <th>Hora entrega</th><th>Estado</th>
+                  <th>Razón flag</th><th>Clasificar</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-revision"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="tab-detalle" class="tab-content">
+          <div class="filter-bar">
+            <select id="fil-tipo" onchange="renderDetalle()">
+              <option value="">Todos los tipos</option>
+              <option value="entregado">✅ Completados</option>
+              <option value="recibelo">🔴 Inc. Recíbelo</option>
+              <option value="cliente">🟡 Culpa cliente</option>
+              <option value="revision">🟠 En revisión</option>
+              <option value="pendiente">⏳ Pendiente</option>
+            </select>
+            <select id="fil-cliente" onchange="renderDetalle()"><option value="">Todos los clientes</option></select>
+            <input type="text" id="fil-buscar" placeholder="Buscar por ID o motivo..." oninput="renderDetalle()" style="flex:1;min-width:180px">
+            <span id="fil-count" style="color:var(--muted2);font-size:12px"></span>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table" style="min-width:1000px">
+              <thead>
+                <tr>
+                  <th>Clasificación</th><th>ID Interna</th><th>Cliente</th><th>Conductor</th>
+                  <th>Tags</th><th>Motivo no entrega</th><th>Comentario conductor</th>
+                  <th>Hora entrega</th><th>Estado sistema</th><th>Estado ML</th>
+                  <th>Razón</th>
+                </tr>
+              </thead>
+              <tbody id="tbody-detalle"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+        <div id="tab-reglas" class="tab-content" style="display:none">
+          <p style="color:var(--muted2);font-size:12px;margin-bottom:14px">
+            Patrones que Iñaki clasificó 3+ veces igual. Las reglas activas se aplican automáticamente la próxima vez que se analice.
+          </p>
+          <div id="reglas-propuesta" style="display:none;background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.3);border-radius:10px;padding:14px 16px;margin-bottom:14px"></div>
+          <div id="reglas-tabla"></div>
+        </div>
+
+<div id="toast" class="toast" style="display:none"></div>
+
+<script type="module">
+import { setupAuth, db } from "/shared/auth.js";
+
+
+// ── DATA ─────────────────────────────────────────────────────
+let ROWS = [];
+let REGLAS = {};          // { fpId: { resultado, label, razon_auto, activa, motivo_display, subml_display, aplicaciones } }
+let PENDIENTES = {};      // tracking local de overrides aún no convertidos en regla
+
+
+// ── HELPERS ──────────────────────────────────────────────────
+// ── PATTERN LEARNING HELPERS ────────────────────────────────────────
+function fpId(fp) {
+  return fp.replace(/[^a-z0-9]/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+}
+function fingerprint(r) {
+  const mot  = col(r,'Motivo no entrega').toLowerCase().trim();
+  const sub  = col(r,'Estado SubML').toLowerCase().trim();
+  const ecom = col(r,'Ecommerce','ecommerce').toLowerCase();
+  const ml   = ecom.includes('mercado libre') ? 'ml' : 'std';
+  return mot + '|' + sub + '|' + ml;
+}
+function labelMap(tipo) {
+  return { recibelo:'🔴 Recíbelo', cliente:'🟡 Cliente', revision:'🟠 Revisar', entregado:'✅ Completado', pendiente:'⏳ Pendiente' }[tipo] || tipo;
+}
+
+function col(row, ...names) {
+  for (const n of names) {
+    if (row[n] !== undefined) return row[n] != null ? String(row[n]) : '';
+    const k = Object.keys(row).find(k => k.trim().toLowerCase() === n.toLowerCase().trim());
+    if (k !== undefined) return row[k] != null ? String(row[k]) : '';
+  }
+  return '';
+}
+
+function parseHora(s) {
+  const str = String(s || '');
+  const m = str.match(/(\d{1,2})[:\.](\d{2})/);
+  return m ? parseInt(m[1]) : null;
+}
+
+function calcDias(f1, f2) {
+  try {
+    const parse = s => {
+      s = String(s || '').trim();
+      if (s.match(/^\d{4}-\d{2}-\d{2}/)) return new Date(s);
+      const m = s.match(/(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})/);
+      if (m) return new Date(m[3].length === 2 ? '20'+m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0') : m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0'));
+      return null;
+    };
+    const d1 = parse(f1); const d2 = parse(f2);
+    if (!d1 || !d2) return 0;
+    return Math.round((d2-d1)/864e5);
+  } catch(e) { return 0; }
+}
+
+window.toast = function(msg, tipo) {
+  const el = document.getElementById('toast');
+  el.textContent = msg; el.className = 'toast ' + (tipo||'');
+  el.style.display = 'block';
+  clearTimeout(el._t);
+  el._t = setTimeout(() => { el.style.display = 'none'; }, 3000);
+};
+
+window.switchTab = function(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  const t = document.getElementById('tab-' + id);
+  if (t) { t.style.display = 'block'; t.classList.add('active'); }
+  if (btn) btn.classList.add('active');
+};
+
+// ── EXCEL READER ─────────────────────────────────────────────
+function readExcel(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, { type: 'array', cellDates: false, raw: false });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        resolve(XLSX.utils.sheet_to_json(ws, { defval: '' }));
+      } catch(err) { reject(err); }
+    };
+    r.onerror = reject;
+    r.readAsArrayBuffer(file);
+  });
+}
+
+// ── FILE INPUTS ──────────────────────────────────────────────
+document.getElementById('file-ingreso').addEventListener('change', function() {
+  const name = this.files[0] ? this.files[0].name : 'Haz clic para cargar';
+  document.getElementById('sub-ingreso').textContent = name;
+  document.getElementById('card-ingreso').classList.toggle('loaded', !!this.files[0]);
+});
+document.getElementById('file-egreso').addEventListener('change', function() {
+  const name = this.files[0] ? this.files[0].name : 'Haz clic para cargar';
+  document.getElementById('sub-egreso').textContent = name;
+  document.getElementById('card-egreso').classList.toggle('loaded', !!this.files[0]);
+});
+
+// ── CLASIFICACION ────────────────────────────────────────────
+function clasificar(r) {
+  const estado    = col(r,'Estado sistema').toLowerCase().trim();
+  const estadoML  = col(r,'Estado ML').toLowerCase().trim();
+  const subML     = col(r,'Estado SubML').toLowerCase().trim();
+  const motivo    = col(r,'Motivo no entrega').toLowerCase().trim();
+  const coment    = col(r,'Comentario conductor').toLowerCase().trim();
+  const tags      = col(r,'Tags').toLowerCase();
+  const horaStr   = col(r,'Hora entrega');
+  const fCreacion = col(r,'Fecha creación','Fecha creacion');
+  const fEgreso   = col(r,'Fecha egreso');
+
+  // ── CANCELADO — no responsabilidad de Recíbelo ──
+  if (estado === 'cancelado' || estadoML === 'cancelled')
+    return { tipo:'cliente', label:'🟡 Cliente', razon:'Cancelado (no aplica a Recíbelo)' };
+
+  // ── ENTREGADO ──
+  if (estado === 'completado')
+    return { tipo:'entregado', label:'✅ Completado', razon:'' };
+
+  // ── PENDIENTE — excluir del SLA ──
+  // "Pendiente" vive en columna T (Estado ML), no en Estado sistema
+  const ESTADOS_PEND_SIS = ['en ruta','en deposito','en depósito','redespacho','en bodega'];
+  if (estadoML === 'pendiente' || ESTADOS_PEND_SIS.includes(estado))
+    return { tipo:'pendiente', label:'⏳ Pendiente', razon:(estadoML==='pendiente'?'ML: Pendiente':estado) };
+
+  // Detectar Mercado Libre → usar timestamp ML (más confiable: ML obliga cerrar a 1 km)
+  const ecommerce  = col(r,'Ecommerce','ecommerce').toLowerCase();
+  const esML       = ecommerce.includes('mercado libre');
+  const fechaMLStr = col(r,'Fecha de Entrega ML','Fecha Entrega ML','fecha de entrega ml');
+  let hora = parseHora(horaStr);
+  let horaFuente = '';
+  if (esML && fechaMLStr) {
+    const hML = parseHora(fechaMLStr);
+    if (hML !== null) { hora = hML; horaFuente = ' (hora ML)'; }
+  }
+  const nocturno = hora !== null && hora >= 22;
+  const late20   = hora !== null && hora >= 20;
+
+  // ── REGLAS APRENDIDAS (pattern learning) ──────────────────────────────────
+  const _fp = fingerprint(r);
+  const _reg = REGLAS[fpId(_fp)];
+  if (_reg && _reg.activa) {
+    return { tipo: _reg.resultado, label: _reg.label, razon: '🧠 ' + _reg.razon_auto, esRegla: true };
+  }
+
+  // ── SubML ABSOLUTOS — aplican antes que cualquier motivo ──────────────────
+  if (subML === 'not visited')
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'SubML "Not Visited" — chofer no visitó el domicilio (absoluto)' };
+  if (subML === 'out for delivery')
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'SubML "Out for Delivery" — paquete no gestionado en ML (absoluto)' };
+
+  // ── RECÍBELO ──
+  if (!motivo && !coment)
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Sin motivo ni comentario' };
+
+  if (motivo === 'otros' && !coment)
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'"Otros" sin comentario' };
+
+  if (motivo.includes('paquete no corresponde') || motivo.includes('no corresponde a la ruta'))
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Paquete no corresponde a ruta (mal ruteo)' };
+
+  if (coment.includes('no corresponde') || coment.includes('mal rute') || coment.includes('no corresponde a ruta'))
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Comentario indica problema de ruteo' };
+
+  if ((motivo.includes('dirección errónea') || motivo.includes('direccion erronea') || motivo.includes('cambia de dirección')) && !coment)
+    return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Dirección errónea sin comentario (posible mal ruteo)' };
+
+  // Sin moradores — cruza con SubML "Receiver Absent" y hora
+  if (motivo.includes('sin moradores') || motivo.includes('domicilio sin moradores')) {
+    if (nocturno)
+      return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Sin moradores después de las 22:00' + horaFuente };
+    // SubML confirma: Receiver Absent en horario normal → cliente
+    return { tipo:'cliente', label:'🟡 Cliente', razon:'Sin moradores' + (subML==='receiver absent'?' (confirmado SubML)':'') };
+  }
+
+  // Reprogramar — usa SubML para validar si fue real
+  if (motivo.includes('cliente solicita reprogramar')) {
+    if (nocturno)
+      return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Reprogramado después de las 22:00 (posible invento del chofer)' + horaFuente };
+    if (subML === 'buyer rescheduled')
+      return { tipo:'cliente', label:'🟡 Cliente', razon:'Reprogramación confirmada (SubML: Buyer Rescheduled)' };
+    if (subML === 'not visited')
+      return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'SubML "Not Visited" — chofer no fue, no reprogramó' };
+    return { tipo:'revision', label:'🟠 Revisar', razon:'Verificar reprogramación en Flex — SubML: ' + (subML||'vacío') };
+  }
+
+  // Domicilio laboral + tag oficina + días de retraso
+  if (motivo.includes('domicilio laboral') && tags.includes('oficina')) {
+    const dias = calcDias(fCreacion, fEgreso);
+    if (dias > 1)
+      return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Tag oficina con ' + dias + ' días de retraso' };
+  }
+
+  // ── CLIENTE ──
+  if (motivo.includes('cliente no contesta')) {
+    if (nocturno) return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'No contesta después de las 22:00 — demasiado tarde' + horaFuente };
+    return { tipo:'cliente', label:'🟡 Cliente', razon:'Cliente no contesta (horario normal)' };
+  }
+
+  if (motivo.includes('se niega a recibir') || motivo.includes('cliente se niega')) {
+    if (nocturno) return { tipo:'recibelo', label:'🔴 Recíbelo', razon:'Se niega después de las 22:00 — tardanza del chofer' + horaFuente };
+    return { tipo:'cliente', label:'🟡 Cliente', razon:'Cliente se niega a recibir' };
+  }
+
+  if (motivo.includes('domicilio laboral') && !tags.includes('oficina'))
+    return { tipo:'revision', label:'🟠 Revisar', razon:'Domicilio laboral sin tag oficina — verificar' };
+
+  if (motivo.includes('dirección errónea') || motivo.includes('direccion erronea') || motivo.includes('cambia de dirección'))
+    return { tipo:'revision', label:'🟠 Revisar', razon:'Verificar si dirección era correcta (posible mal ruteo)' };
+
+  if (motivo === 'otros' && coment.includes('palabra clave'))
+    return { tipo:'cliente', label:'🟡 Cliente', razon:'Palabra clave ML (responsabilidad del comprador)' };
+
+  if (motivo === 'otros' && coment)
+    return { tipo:'revision', label:'🟠 Revisar', razon:'Otros: ' + coment.substring(0,80) };
+
+  return { tipo:'revision', label:'🟠 Revisar', razon:'Combinación no reconocida — revisar manualmente' };
+}
+
+// ── ANALIZAR ─────────────────────────────────────────────────
+window.analizar = async function() {
+  const fI = document.getElementById('file-ingreso').files[0];
+  const fE = document.getElementById('file-egreso').files[0];
+  if (!fI && !fE) { toast('Carga al menos un archivo Excel','err'); return; }
+
+  const btn = document.getElementById('btn-analizar');
+  btn.disabled = true; btn.textContent = '⏳ Procesando...';
+
+  try {
+    const promises = [];
+    if (fI) promises.push(readExcel(fI));
+    if (fE) promises.push(readExcel(fE));
+    const results = await Promise.all(promises);
+    const combined = results.flat();
+
+    // Deduplicate by ID interna (egreso wins — preserva datos de egreso si existe en ambos)
+    const seen = new Map();
+    combined.forEach(r => {
+      const id = col(r,'ID interna','id interna') || ('_idx_' + Math.random());
+      if (!seen.has(id)) seen.set(id, r);
+      else {
+        // If this row has Fecha egreso and stored doesn't, prefer this
+        const stored = seen.get(id);
+        if (col(r,'Fecha egreso') && !col(stored,'Fecha egreso')) seen.set(id, r);
+      }
+    });
+
+    ROWS = [...seen.values()].map(r => ({
+      ...r,
+      _cl: clasificar(r),
+      _override: null,
+      _nota: ''
+    }));
+
+    // Populate client filter
+    const clientes = [...new Set(ROWS.map(r => col(r,'Cliente')).filter(Boolean))].sort();
+    const filCli = document.getElementById('fil-cliente');
+    filCli.innerHTML = '<option value="">Todos los clientes</option>';
+    clientes.forEach(c => { const o = document.createElement('option'); o.value = c; o.textContent = c; filCli.appendChild(o); });
+
+    renderAll();
+    document.getElementById('sla-main').style.display = 'block';
+    document.getElementById('btn-exportar').style.display = 'inline-flex';
+    const autoClasificados = ROWS.filter(r => r._cl.esRegla).length;
+    const msgReglas = autoClasificados > 0 ? ' · 🧠 ' + autoClasificados + ' por regla' : '';
+    toast('Listo — ' + ROWS.length + ' paquetes analizados' + msgReglas, 'ok');
+  } catch(e) {
+    toast('Error al procesar: ' + e.message, 'err');
+    console.error(e);
+  }
+  btn.disabled = false; btn.textContent = '📊 Analizar';
+};
+
+// ── RENDER HELPERS ───────────────────────────────────────────
+function getTipo(r) { return r._override || r._cl.tipo; }
+function getLabel(r) {
+  const t = getTipo(r);
+  const map = { entregado:'✅ Completado', recibelo:'🔴 Recíbelo', cliente:'🟡 Cliente', revision:'🟠 Revisar', pendiente:'⏳ Pendiente' };
+  return map[t] || t;
+}
+function badgeClass(tipo) {
+  return { entregado:'badge-ok', recibelo:'badge-rec', cliente:'badge-cli', revision:'badge-rev', pendiente:'badge-pend' }[tipo] || '';
+}
+
+function calcAcido(group) {
+  return group.total > 0 ? (group.comp / group.total * 100) : null;
+}
+function calcAjustado(group) {
+  const denom = group.comp + group.rec;
+  return denom > 0 ? (group.comp / denom * 100) : null;
+}
+function calcSLA(group) { return calcAjustado(group); }
+
+function slaColor(v) {
+  if (v === null) return 'var(--muted2)';
+  if (v >= 90) return 'var(--verde)';
+  if (v >= 80) return 'var(--amarillo)';
+  return 'var(--rojo)';
+}
+
+function renderAll() {
+  renderResumen();
+  renderRevision();
+  renderDetalle();
+  const revCount = ROWS.filter(r => getTipo(r) === 'revision').length;
+  const badge = document.getElementById('badge-rev');
+  badge.textContent = revCount;
+  badge.style.display = revCount > 0 ? 'inline' : 'none';
+  actualizarBadgeReglas();
+}
+
+// ── SORT STATE ───────────────────────────────────────────────
+let _sortCol = 'ajustado';
+let _sortAsc  = true;
+
+window.sortResumen = function(col) {
+  if (_sortCol === col) { _sortAsc = !_sortAsc; }
+  else { _sortCol = col; _sortAsc = col === 'cli'; }
+  // Update header indicators
+  ['cli','total','comp','rec','cli_f','rev','pend','acido','ajustado'].forEach(k => {
+    const el = document.getElementById('sort-' + k);
+    if (el) el.textContent = '';
+  });
+  const el = document.getElementById('sort-' + col);
+  if (el) el.textContent = _sortAsc ? ' ▲' : ' ▼';
+  renderResumen();
+};
+
+// ── RESUMEN ──────────────────────────────────────────────────
+function buildMap() {
+  const map = {};
+  ROWS.forEach(r => {
+    const cli = col(r,'Cliente') || '(Sin cliente)';
+    if (!map[cli]) map[cli] = { total:0, comp:0, rec:0, cli_f:0, rev:0, pend:0 };
+    const m = map[cli]; m.total++;
+    const t = getTipo(r);
+    if (t==='entregado') m.comp++;
+    else if (t==='recibelo') m.rec++;
+    else if (t==='cliente') m.cli_f++;
+    else if (t==='revision') m.rev++;
+    else if (t==='pendiente') m.pend++;
+  });
+  return map;
+}
+
+function renderResumen() {
+  const map = buildMap();
+  const g = { total:0, comp:0, rec:0, cli_f:0, rev:0, pend:0 };
+  Object.values(map).forEach(m => { g.total+=m.total; g.comp+=m.comp; g.rec+=m.rec; g.cli_f+=m.cli_f; g.rev+=m.rev; g.pend+=m.pend; });
+
+  const sellersArr = Object.values(buildMap());
+  const avgAcido    = sellersArr.length ? sellersArr.reduce((s,m)=>s+(calcAcido(m)??0),0)/sellersArr.length : null;
+  const avgAjustado = sellersArr.length ? sellersArr.reduce((s,m)=>s+(calcAjustado(m)??0),0)/sellersArr.length : null;
+
+  function kpiCard(label, val, tipo, title) {
+    const click = tipo ? ' onclick="filtrarPorTipo(\'' + tipo + '\')" style="cursor:pointer" title="Ver ' + title + '"' : '';
+    const hover = tipo ? ' onmouseover="this.style.borderColor=\'var(--accent)\'" onmouseout="this.style.borderColor=\'var(--border)\'"' : '';
+    return '<div class="kpi-card"' + click + hover + '><div class="kpi-label">' + label + '</div><div class="kpi-value ' + (tipo||'') + '">' + val + '</div></div>';
+  }
+  document.getElementById('kpi-grid').innerHTML =
+    kpiCard('Total paquetes', g.total, '', '') +
+    kpiCard('Completados', g.comp, 'entregado', 'completados') +
+    kpiCard('Inc. Recíbelo', g.rec, 'recibelo', 'incidencias Recíbelo') +
+    kpiCard('Culpa Cliente', g.cli_f, 'cliente', 'culpa cliente') +
+    kpiCard('En revisión', g.rev, 'revision', 'en revisión') +
+    '<div class="kpi-card" title="Promedio por seller"><div class="kpi-label">▪ % Ácido global</div><div class="kpi-value" style="color:'+slaColor(avgAcido)+'">'+(avgAcido!==null?avgAcido.toFixed(1)+'%':'—')+'</div></div>' +
+    '<div class="kpi-card" title="Promedio por seller"><div class="kpi-label">▪ % Ajustado global</div><div class="kpi-value" style="color:'+slaColor(avgAjustado)+'">'+(avgAjustado!==null?avgAjustado.toFixed(1)+'%':'—')+'</div></div>';
+
+  const sorted = Object.entries(map).sort((a,b) => {
+    let va, vb;
+    if (_sortCol === 'cli')          { va = a[0].toLowerCase(); vb = b[0].toLowerCase(); }
+    else if (_sortCol === 'ajustado') { va = calcAjustado(a[1])??-1; vb = calcAjustado(b[1])??-1; }
+    else if (_sortCol === 'acido')    { va = calcAcido(a[1])??-1;    vb = calcAcido(b[1])??-1; }
+    else { va = a[1][_sortCol]??0; vb = b[1][_sortCol]??0; }
+    if (va < vb) return _sortAsc ? -1 : 1;
+    if (va > vb) return _sortAsc ? 1 : -1;
+    return 0;
+  });
+
+  let html = '';
+  sorted.forEach(function(entry) {
+    const cli = entry[0]; const m = entry[1];
+    const acido    = calcAcido(m);
+    const ajustado = calcAjustado(m);
+    const acidoStr    = acido    !== null ? acido.toFixed(1)+'%'    : '—';
+    const ajustadoStr = ajustado !== null ? ajustado.toFixed(1)+'%' : '—';
+    const colAcido    = slaColor(acido);
+    const colAjustado = slaColor(ajustado);
+    const barW = ajustado !== null ? Math.min(100,ajustado).toFixed(0) : '0';
+    html += '<tr>' +
+      '<td style="font-weight:600;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + cli + '">' + cli + '</td>' +
+      '<td style="text-align:right">' + m.total + '</td>' +
+      '<td style="text-align:right;color:var(--verde)">' + m.comp + '</td>' +
+      '<td style="text-align:right;color:var(--rojo)">' + m.rec + '</td>' +
+      '<td style="text-align:right">' + m.cli_f + '</td>' +
+      '<td style="text-align:right;color:var(--naranja)">' + m.rev + '</td>' +
+      '<td style="text-align:right;color:var(--muted2)">' + m.pend + '</td>' +
+      '<td style="text-align:right"><span style="font-weight:600;color:' + colAcido + '">' + acidoStr + '</span></td>' +
+      '<td style="min-width:110px"><span style="font-weight:700;color:' + colAjustado + '">' + ajustadoStr + '</span>' +
+        '<div class="sla-bar"><div class="sla-bar-fill" style="width:' + barW + '%;background:' + colAjustado + '"></div></div>' +
+      '</td>' +
+      '</tr>';
+  });
+  document.getElementById('tbody-resumen').innerHTML = html || '<tr><td colspan="8" style="text-align:center;color:var(--muted2);padding:24px">Sin datos</td></tr>';
+}
+
+// ── REVISIÓN ────────────────────────────────────────────────
+function renderRevision() {
+  const rows = ROWS.map((r,i) => ({ r, i })).filter(x => getTipo(x.r) === 'revision');
+  if (!rows.length) {
+    document.getElementById('tbody-revision').innerHTML =
+      '<tr><td colspan="9"><div class="empty-state"><div class="es-icon">✅</div><div>Sin paquetes en revisión</div></div></td></tr>';
+    return;
+  }
+  let html = '';
+  rows.forEach(function(x) {
+    const r = x.r; const i = x.i;
+    const id     = col(r,'ID interna','id interna');
+    const id_sys = col(r,'ID');
+    const cli = col(r,'Cliente');
+    const mot = col(r,'Motivo no entrega');
+    const com = col(r,'Comentario conductor');
+    const tgs = col(r,'Tags');
+    const hra = col(r,'Hora entrega');
+    const est = col(r,'Estado sistema');
+    const razon = r._cl.razon;
+    html += '<tr>' +
+      '<td style="font-size:11px;color:var(--muted2);font-family:monospace">' + (id_sys ? '<a href="https://dashboard.recibelo.cl/admin/package/' + id_sys + '/show" target="_blank" title="Ver en sistema" style="color:var(--accent);text-decoration:none;font-family:monospace">' + id + ' ↗</a>' : id) + '</td>' +
+      '<td style="font-weight:600">' + cli + '</td>' +
+      '<td>' + mot + '</td>' +
+      '<td style="color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + com + '">' + (com || '—') + '</td>' +
+      '<td style="color:var(--accent);font-size:11px">' + (tgs || '—') + '</td>' +
+      '<td style="color:' + (parseHora(hra)>=22?'var(--rojo)':'var(--muted2)') + '">' + (hra || '—') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted2)">' + col(r,'Estado ML') + '</td>' +
+      '<td style="font-size:11px;color:var(--accent)">' + (col(r,'Estado SubML')||'—') + '</td>' +
+      '<td style="font-size:11px;color:var(--naranja);max-width:200px">' + razon + '</td>' +
+      '<td style="white-space:nowrap;min-width:260px">' +
+        '<div style="display:flex;flex-direction:column;gap:5px">' +
+          '<input id="nota-' + i + '" type="text" placeholder="Nota (ej: palabra clave ML...)" ' +
+            'oninput="ROWS[' + i + ']._nota=this.value" ' +
+            'style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:5px;padding:4px 7px;font-size:11px;box-sizing:border-box">' +
+          '<div style="display:flex;gap:5px">' +
+            '<button class="btn-sm rec" onclick="override(' + i + ',\'recibelo\')">🔴 Rec.</button>' +
+            '<button class="btn-sm cli" onclick="override(' + i + ',\'cliente\')">🟡 Cli.</button>' +
+          '</div>' +
+        '</div>' +
+      '</td>' +
+      '</tr>';
+  });
+  document.getElementById('tbody-revision').innerHTML = html;
+  // Restaurar notas guardadas (evita problemas de escaping en atributo value)
+  rows.forEach(function(x){
+    const el = document.getElementById('nota-' + x.i);
+    if(el && x.r._nota) el.value = x.r._nota;
+  });
+}
+
+window.filtrarPorTipo = function(tipo) {
+  document.getElementById('fil-tipo').value = tipo;
+  // Switch to detalle tab
+  const tabs = document.querySelectorAll('.tab');
+  const contents = document.querySelectorAll('.tab-content');
+  tabs.forEach(t => t.classList.remove('active'));
+  contents.forEach(t => { t.classList.remove('active'); t.style.display = 'none'; });
+  const detalleTab = document.getElementById('tab-detalle');
+  if (detalleTab) { detalleTab.style.display = 'block'; detalleTab.classList.add('active'); }
+  // Activate the detalle tab button
+  document.querySelectorAll('.tab').forEach(t => { if (t.textContent.includes('Detalle')) t.classList.add('active'); });
+  renderDetalle();
+};
+
+window.override = function(idx, tipo) {
+  const r = ROWS[idx];
+  r._override = tipo;
+  const notaEl = document.getElementById('nota-' + idx);
+  if (notaEl) r._nota = notaEl.value;
+
+  // ── TRACKING DE PATRONES ─────────────────────────────────────────────
+  const fp  = fingerprint(r);
+  const fid = fpId(fp);
+  if (!REGLAS[fid]) {
+    // no existe regla activa — rastrear en PENDIENTES
+    if (!PENDIENTES[fid]) {
+      PENDIENTES[fid] = {
+        fp, fid,
+        motivo_display: col(r,'Motivo no entrega'),
+        subml_display:  col(r,'Estado SubML'),
+        es_ml: col(r,'Ecommerce','ecommerce').toLowerCase().includes('mercado libre'),
+        counts: {}, total: 0
+      };
+    }
+    const p = PENDIENTES[fid];
+    p.counts[tipo] = (p.counts[tipo] || 0) + 1;
+    p.total++;
+    const max = Math.max(...Object.values(p.counts));
+    const dominante = Object.keys(p.counts).find(k => p.counts[k] === max);
+    const conflictos = p.total - max;
+    // Proponer cuando hay 3+ del mismo tipo sin conflictos
+    if (max >= 3 && conflictos === 0) {
+      setTimeout(() => proponeRegla(fid, dominante, p), 600);
+    }
+  }
+
+  renderAll();
+  toast('Clasificación actualizada', 'ok');
+};
+
+// ── PATTERN LEARNING FUNCTIONS ──────────────────────────────────────────────
+function proponeRegla(fid, tipo, p) {
+  if (REGLAS[fid]?.activa) return; // ya existe
+  const label = labelMap(tipo);
+  const motText = p.motivo_display || '(sin motivo)';
+  const subText = p.subml_display  || '(sin SubML)';
+  const mlText  = p.es_ml ? ' · Mercado Libre' : '';
+  const div = document.getElementById('reglas-propuesta');
+  if (!div) return;
+  div.style.display = 'block';
+  div.innerHTML =
+    '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">' +
+    '<div>' +
+      '<div style="font-size:13px;font-weight:700;margin-bottom:6px">🧠 ¿Crear regla automática?</div>' +
+      '<div style="font-size:12px;color:var(--muted2);margin-bottom:4px">Clasificaste <strong>' + p.counts[tipo] + ' veces</strong> este patrón como <strong>' + label + '</strong> sin excepciones:</div>' +
+      '<div style="font-size:12px;background:var(--card);border-radius:6px;padding:8px 10px;margin-top:6px">' +
+        '<span style="color:var(--muted2)">Motivo:</span> ' + motText + ' &nbsp;·&nbsp; ' +
+        '<span style="color:var(--muted2)">SubML:</span> ' + (subText||'vacío') + mlText +
+      '</div>' +
+    '</div>' +
+    '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0">' +
+      '<button onclick="crearRegla(\'' + fid + '\',\'' + tipo + '\')" style="background:rgba(99,102,241,.2);border:1px solid rgba(99,102,241,.4);color:#818cf8;border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px;font-weight:600">✅ Crear regla</button>' +
+      '<button onclick="document.getElementById(\'reglas-propuesta\').style.display=\'none\'" style="background:none;border:1px solid var(--border);color:var(--muted2);border-radius:7px;padding:6px 14px;cursor:pointer;font-size:12px">Ignorar</button>' +
+    '</div></div>';
+  // Cambiar a tab reglas si no está visible
+  const tabEl = document.querySelector('[onclick*="reglas"]');
+  if (tabEl) tabEl.style.boxShadow = '0 0 0 2px rgba(99,102,241,.5)';
+}
+
+window.crearRegla = async function(fid, tipo) {
+  const p = PENDIENTES[fid];
+  if (!p) return;
+  const regla = {
+    fp: p.fp,
+    fid,
+    motivo_display: p.motivo_display || '',
+    subml_display:  p.subml_display  || '',
+    es_ml:          p.es_ml || false,
+    resultado:      tipo,
+    label:          labelMap(tipo),
+    razon_auto:     'Regla aprendida: ' + (p.motivo_display||'sin motivo') + (p.subml_display ? ' + ' + p.subml_display : ''),
+    activa:         true,
+    confirmaciones: p.counts[tipo] || 1,
+    aplicaciones:   0,
+    creada:         new Date().toISOString()
+  };
+  try {
+    const { collection, doc: fDoc, setDoc, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await setDoc(fDoc(db, 'sla_reglas', fid), regla);
+    REGLAS[fid] = regla;
+    delete PENDIENTES[fid];
+    document.getElementById('reglas-propuesta').style.display = 'none';
+    actualizarBadgeReglas();
+    renderReglas();
+    toast('Regla creada — se aplicará en el próximo análisis 🧠', 'ok');
+  } catch(e) {
+    toast('Error al guardar regla: ' + e.message, 'err');
+  }
+};
+
+window.toggleRegla = async function(fid) {
+  const r = REGLAS[fid];
+  if (!r) return;
+  r.activa = !r.activa;
+  try {
+    const { doc: fDoc, updateDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await updateDoc(fDoc(db, 'sla_reglas', fid), { activa: r.activa });
+    renderReglas();
+    toast(r.activa ? 'Regla activada' : 'Regla desactivada', 'ok');
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+};
+
+window.eliminarRegla = async function(fid) {
+  if (!confirm('¿Eliminar esta regla?')) return;
+  try {
+    const { doc: fDoc, deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(fDoc(db, 'sla_reglas', fid));
+    delete REGLAS[fid];
+    actualizarBadgeReglas();
+    renderReglas();
+    toast('Regla eliminada', 'ok');
+  } catch(e) { toast('Error: ' + e.message, 'err'); }
+};
+
+function actualizarBadgeReglas() {
+  const count = Object.values(REGLAS).filter(r => r.activa).length;
+  const badge = document.getElementById('badge-reglas');
+  if (badge) { badge.textContent = count; badge.style.display = count > 0 ? 'inline' : 'none'; }
+}
+
+function renderReglas() {
+  const div = document.getElementById('reglas-tabla');
+  if (!div) return;
+  const reglas = Object.values(REGLAS);
+  if (!reglas.length) {
+    div.innerHTML = '<div class="empty-state"><div class="es-icon">🧠</div><div style="color:var(--muted2)">Aún no hay reglas creadas.<br>Clasifica el mismo patrón 3 veces y el sistema te ofrecerá automatizarlo.</div></div>';
+    return;
+  }
+  const rows = reglas.sort((a,b) => (b.confirmaciones||0)-(a.confirmaciones||0)).map(r => {
+    const fid = r.fid;
+    const activaStyle = r.activa ? 'color:var(--verde)' : 'color:var(--muted2)';
+    const mlBadge = r.es_ml ? '<span style="font-size:10px;background:rgba(99,102,241,.15);color:#818cf8;border-radius:4px;padding:1px 5px;margin-left:4px">ML</span>' : '';
+    return '<tr style="border-bottom:1px solid var(--border)">' +
+      '<td style="padding:10px 8px"><span style="' + activaStyle + ';font-size:18px">' + (r.activa ? '●' : '○') + '</span></td>' +
+      '<td style="padding:10px 8px">' +
+        '<div style="font-size:12px;font-weight:600">' + (r.motivo_display||'—') + mlBadge + '</div>' +
+        '<div style="font-size:11px;color:var(--muted2)">SubML: ' + (r.subml_display||'vacío') + '</div>' +
+      '</td>' +
+      '<td style="padding:10px 8px"><span class="badge ' + badgeClass(r.resultado) + '">' + r.label + '</span></td>' +
+      '<td style="padding:10px 8px;font-size:12px;color:var(--muted2)" title="' + r.razon_auto + '">' + (r.razon_auto||'').substring(0,50) + '…</td>' +
+      '<td style="padding:10px 8px;text-align:center;font-size:13px;color:var(--muted2)">' + (r.confirmaciones||1) + '</td>' +
+      '<td style="padding:10px 8px;text-align:center;font-size:13px;color:var(--muted2)">' + (r.aplicaciones||0) + '</td>' +
+      '<td style="padding:10px 8px">' +
+        '<div style="display:flex;gap:5px">' +
+          '<button onclick="toggleRegla(\'' + fid + '\')" style="background:none;border:1px solid var(--border);color:var(--muted2);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">' + (r.activa ? '⏸ Pausar' : '▶ Activar') + '</button>' +
+          '<button onclick="eliminarRegla(\'' + fid + '\')" style="background:none;border:1px solid rgba(239,68,68,.3);color:var(--rojo);border-radius:6px;padding:4px 10px;cursor:pointer;font-size:11px">🗑</button>' +
+        '</div>' +
+      '</td>' +
+    '</tr>';
+  }).join('');
+  div.innerHTML =
+    '<table style="width:100%;border-collapse:collapse;font-size:12px">' +
+    '<thead><tr style="color:var(--muted2);font-size:10px;text-transform:uppercase;border-bottom:1px solid var(--border)">' +
+    '<th style="padding:6px 8px;text-align:left">Estado</th>' +
+    '<th style="padding:6px 8px;text-align:left">Patrón</th>' +
+    '<th style="padding:6px 8px;text-align:left">Resultado</th>' +
+    '<th style="padding:6px 8px;text-align:left">Razón</th>' +
+    '<th style="padding:6px 8px;text-align:center">Confirmaciones</th>' +
+    '<th style="padding:6px 8px;text-align:center">Aplicaciones</th>' +
+    '<th style="padding:6px 8px;text-align:left">Acciones</th>' +
+    '</thead><tbody>' + rows + '</tbody></table>';
+  actualizarBadgeReglas();
+}
+
+// ── DETALLE ──────────────────────────────────────────────────
+window.renderDetalle = function() {
+  const filTipo   = document.getElementById('fil-tipo').value;
+  const filCli    = document.getElementById('fil-cliente').value;
+  const filBuscar = document.getElementById('fil-buscar').value.toLowerCase();
+
+  const filtered = ROWS.filter(r => {
+    const t = getTipo(r);
+    if (filTipo && t !== filTipo) return false;
+    if (filCli && col(r,'Cliente') !== filCli) return false;
+    if (filBuscar) {
+      const id  = col(r,'ID interna','id interna').toLowerCase();
+      const mot = col(r,'Motivo no entrega').toLowerCase();
+      const com = col(r,'Comentario conductor').toLowerCase();
+      if (!id.includes(filBuscar) && !mot.includes(filBuscar) && !com.includes(filBuscar)) return false;
+    }
+    return true;
+  });
+
+  document.getElementById('fil-count').textContent = filtered.length + ' / ' + ROWS.length + ' paquetes';
+
+  const MAX = 500;
+  let html = '';
+  filtered.slice(0, MAX).forEach(function(r) {
+    const tipo  = getTipo(r);
+    const label = getLabel(r);
+    const bCls  = badgeClass(tipo);
+    const id     = col(r,'ID interna','id interna');
+    const id_sys = col(r,'ID');
+    const cli   = col(r,'Cliente');
+    const cond  = col(r,'Nombre conductor Egreso','Conductor','conductor');
+    const tgs   = col(r,'Tags');
+    const mot   = col(r,'Motivo no entrega');
+    const com   = col(r,'Comentario conductor');
+    const hra      = col(r,'Hora entrega');
+    const _ecom    = col(r,'Ecommerce','ecommerce').toLowerCase();
+    const _fechaML = col(r,'Fecha de Entrega ML','Fecha Entrega ML');
+    const _hML     = (_ecom.includes('mercado libre') && _fechaML) ? parseHora(_fechaML) : null;
+    const horaDisplay = _hML !== null
+      ? (String(_hML).padStart(2,'0') + ':' + (() => { const m = String(_fechaML).match(/(\d{2}):(\d{2}):\d{2}/); return m ? m[2] : '00'; })() + ' <span style="font-size:10px;opacity:.6;color:var(--accent)" title="Timestamp Mercado Libre">ML</span>')
+      : (hra || '—');
+    const est   = col(r,'Estado sistema');
+    const estml = col(r,'Estado ML');
+    const razon = r._cl.razon;
+    html += '<tr>' +
+      '<td><span class="badge ' + bCls + '">' + label + '</span></td>' +
+      '<td style="font-size:11px;color:var(--muted2);font-family:monospace">' + (id_sys ? '<a href="https://dashboard.recibelo.cl/admin/package/' + id_sys + '/show" target="_blank" title="Ver en sistema" style="color:var(--accent);text-decoration:none;font-family:monospace">' + id + ' ↗</a>' : id) + '</td>' +
+      '<td style="font-weight:600;white-space:nowrap">' + cli + '</td>' +
+      '<td style="font-size:12px;color:var(--muted2);white-space:nowrap">' + (cond||'—') + '</td>' +
+      '<td style="color:var(--accent);font-size:11px">' + (tgs||'—') + '</td>' +
+      '<td>' + mot + '</td>' +
+      '<td style="color:var(--muted2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + com + '">' + (com||'—') + '</td>' +
+      '<td style="color:' + ((parseHora(hra)>=22||(_hML!==null&&_hML>=22))?'var(--rojo)':'inherit') + '">' + horaDisplay + '</td>' +
+      '<td style="font-size:11px;color:var(--muted2)">' + col(r,'Estado ML') + '</td>' +
+      '<td style="font-size:11px;color:var(--accent)">' + (col(r,'Estado SubML')||'—') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted2)">' + (estml||'—') + '</td>' +
+      '<td style="font-size:11px;color:var(--muted2);max-width:180px">' + razon + '</td>' +
+      '</tr>';
+  });
+  if (filtered.length > MAX) html += '<tr><td colspan="11" style="text-align:center;color:var(--muted2);padding:12px;font-size:12px">Mostrando primeros ' + MAX + ' de ' + filtered.length + ' resultados. Usa los filtros para refinar.</td></tr>';
+  if (!filtered.length) html = '<tr><td colspan="11"><div class="empty-state"><div class="es-icon">🔍</div><div>Sin resultados</div></div></td></tr>';
+  document.getElementById('tbody-detalle').innerHTML = html;
+};
+
+// ── EXPORTAR EXCEL ───────────────────────────────────────────
+window.exportarExcel = function() {
+  if (!ROWS.length) return;
+  const data = ROWS.map(r => {
+    const t = getTipo(r);
+    const labelMap = { entregado:'✅ Completado', recibelo:'🔴 Recíbelo', cliente:'🟡 Cliente', revision:'🟠 Revisar', pendiente:'⏳ Pendiente' };
+    return {
+      'Clasificación': labelMap[t] || t,
+      'Razón': r._override ? ('(Manual → ' + t + (r._nota ? ': ' + r._nota : '') + ')') : r._cl.razon,
+      'ID Interna': col(r,'ID interna','id interna'),
+      'Cliente': col(r,'Cliente'),
+      'Tags': col(r,'Tags'),
+      'Motivo no entrega': col(r,'Motivo no entrega'),
+      'Comentario conductor': col(r,'Comentario conductor'),
+      'Hora entrega': col(r,'Hora entrega'),
+      'Estado sistema': col(r,'Estado sistema'),
+      'Estado ML': col(r,'Estado ML'),
+      'Estado SubML': col(r,'Estado SubML'),
+      'Fecha egreso': col(r,'Fecha egreso'),
+      'Dirección entrega': col(r,'Dirección entrega'),
+      'Comuna': col(r,'Comuna'),
+      'Conductor Egreso': col(r,'Nombre conductor Egreso')
+    };
+  });
+  const ws = XLSX.utils.json_to_sheet(data);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'SLA');
+
+  // Resumen tab
+  const map = buildMap();
+  const resData = Object.entries(map).map(function(entry) {
+    const cli = entry[0]; const m = entry[1];
+    const acido=calcAcido(m); const ajustado=calcAjustado(m);
+    return { 'Cliente':cli, 'Total':m.total, 'Completados':m.comp, 'Inc. Recíbelo':m.rec, 'Culpa Cliente':m.cli_f, 'En Revisión':m.rev, 'Pendientes':m.pend, '% Acido': acido!==null ? parseFloat(acido.toFixed(1)) : '', '% Ajustado': ajustado!==null ? parseFloat(ajustado.toFixed(1)) : '' };
+  });
+  const ws2 = XLSX.utils.json_to_sheet(resData);
+  XLSX.utils.book_append_sheet(wb, ws2, 'Resumen');
+  XLSX.writeFile(wb, 'SLA_CX_' + new Date().toISOString().slice(0,10) + '.xlsx');
+  toast('Excel exportado', 'ok');
+};
+
+// ── CALCULAR SLA (usada en renderResumen) ────────────────────
+window.calcSLA = calcSLA;
+window.buildMap = buildMap;
+
+// ── AUTH ─────────────────────────────────────────────────────
+setupAuth({
+  modulo: 'sla',
+  onReady: async (user, roles) => {
+    // Cargar reglas aprendidas desde Firestore
+    try {
+      const { collection: col2, getDocs } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+      const snap = await getDocs(col2(db, 'sla_reglas'));
+      snap.forEach(d => { REGLAS[d.id] = { fid: d.id, ...d.data() }; });
+      actualizarBadgeReglas();
+      renderReglas();
+    } catch(e) { console.warn('sla_reglas no disponible:', e.message); }
+  }
+});
+
+</script>
+</body>
+</html>

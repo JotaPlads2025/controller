@@ -237,6 +237,8 @@
     <a href="/asistencia_ruta">🚚 Asistencia Ruta</a>
     <a id="sidebar-operacional" href="/operacional" style="opacity:0.35;pointer-events:auto">⚙️ Operacional</a>
       <a id="sidebar-finanzas" style="opacity:0.35;cursor:not-allowed;pointer-events:none">💰 Finanzas <span style="font-size:10px;color:var(--muted)">(pronto)</span></a>
+      <a id="sidebar-sla" href="/sla" style="opacity:0.35;cursor:not-allowed;pointer-events:none">📊 SLA CX</a>
+      <a id="sidebar-incidencias" href="/incidencias" style="opacity:0.35;cursor:not-allowed;pointer-events:none">📊 Incidencias</a>
 
     <div class="nav-section">Áreas</div>
     <a onclick="filterByArea('OP')">🏭 Operaciones</a>
@@ -468,19 +470,38 @@ async function fetchUserRoles(user) {
 }
 
 function aplicarRolesSidebar() {
-  const linkFinanzas = document.getElementById('sidebar-finanzas');
-  if (!linkFinanzas) return;
+  // Operacional
   if (_userRoles.includes('operacional') || _userRoles.includes('admin')) {
-    const lo=document.getElementById('sidebar-operacional');if(lo){lo.style.opacity='1';lo.style.cursor='pointer';}
+    const lo = document.getElementById('sidebar-operacional');
+    if (lo) { lo.style.opacity='1'; lo.style.cursor='pointer'; }
   }
-  if (_userRoles.includes('finanzas') || _userRoles.includes('admin')) {
-    linkFinanzas.removeAttribute('style');
-    linkFinanzas.setAttribute('href', '/finanzas');
-    linkFinanzas.innerHTML = '💰 Finanzas';
-  } else {
-    linkFinanzas.style.cssText = 'opacity:0.35;cursor:not-allowed;pointer-events:none';
-    linkFinanzas.removeAttribute('href');
-    linkFinanzas.innerHTML = '💰 Finanzas <span style="font-size:10px;color:var(--muted)">(pronto)</span>';
+  // Finanzas
+  const linkFinanzas = document.getElementById('sidebar-finanzas');
+  if (linkFinanzas) {
+    if (_userRoles.includes('finanzas') || _userRoles.includes('admin')) {
+      linkFinanzas.removeAttribute('style');
+      linkFinanzas.setAttribute('href', '/finanzas');
+      linkFinanzas.innerHTML = '💰 Finanzas';
+    } else {
+      linkFinanzas.style.cssText = 'opacity:0.35;cursor:not-allowed;pointer-events:none';
+      linkFinanzas.removeAttribute('href');
+      linkFinanzas.innerHTML = '💰 Finanzas <span style="font-size:10px;color:var(--muted)">(pronto)</span>';
+    }
+  }
+  // SLA CX
+  const linkSla = document.getElementById('sidebar-sla');
+  if (linkSla && (_userRoles.includes('sla') || _userRoles.includes('controller') || _userRoles.includes('admin'))) {
+    linkSla.style.opacity = '1';
+    linkSla.style.cursor = 'pointer';
+    linkSla.style.pointerEvents = 'auto';
+    linkSla.style.color = '';
+  }
+  // Incidencias
+  const linkIncid = document.getElementById('sidebar-incidencias');
+  if (linkIncid && (_userRoles.includes('incidencias') || _userRoles.includes('controller') || _userRoles.includes('admin'))) {
+    linkIncid.style.opacity = '1';
+    linkIncid.style.cursor = 'pointer';
+    linkIncid.style.pointerEvents = 'auto';
   }
 }
 

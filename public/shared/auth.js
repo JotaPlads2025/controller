@@ -75,6 +75,8 @@ const _MODULO_ROL = {
   asistencia_ruta: r => r.includes("asistencia_ruta") || r.includes("controller") || r.includes("admin"),
   operacional:     r => r.includes("operacional") || r.includes("admin"),
   finanzas:        r => r.includes("finanzas") || r.includes("admin"),
+  sla:             r => r.includes("sla") || r.includes("controller") || r.includes("admin"),
+  incidencias:     r => r.includes("incidencias") || r.includes("controller") || r.includes("admin"),
 };
 
 // ── SIDEBAR ───────────────────────────────────────────────────
@@ -95,6 +97,8 @@ function _aplicarSidebar(roles) {
   _showNav("asistencia",   _MODULO_ROL.asistencia_ruta(roles));
   _showNav("operacional",  _MODULO_ROL.operacional(roles));
   _showNav("finanzas",     _MODULO_ROL.finanzas(roles));
+  _showNav("sla",          _MODULO_ROL.sla(roles));
+  _showNav("incidencias",  _MODULO_ROL.incidencias(roles));
 }
 
 // ── ACCESO ────────────────────────────────────────────────────
@@ -125,11 +129,86 @@ async function _getAcceso(user, modulo) {
   }
 }
 
+
+// ── WEATHER ───────────────────────────────────────────────────
+function _injectWeatherStyles() {
+  if (document.getElementById("_weather-style")) return;
+  const style = document.createElement("style");
+  style.id = "_weather-style";
+  style.textContent =
+    "#weather-strip{display:flex;gap:6px;padding:4px 24px;background:var(--card,#fff);border-bottom:1px solid var(--border,#e5e7eb);overflow-x:auto;scrollbar-width:none;justify-content:flex-end;}" +
+    "#weather-strip::-webkit-scrollbar{display:none}" +
+    ".w-day{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:52px;padding:4px 6px;border-radius:8px;background:var(--bg,#f8f9fa);font-size:11px;line-height:1.3;flex-shrink:0;}" +
+    ".w-day .w-name{font-weight:600;color:var(--muted,#6b7280);text-transform:capitalize;}" +
+    ".w-day .w-ico{font-size:18px;}" +
+    ".w-day .w-temp{color:var(--fg,#111);white-space:nowrap;}" +
+    ".w-day.today{background:var(--accent,#2563eb)!important;}" +
+    ".w-day.today .w-name,.w-day.today .w-temp{color:#fff!important;}" +
+    "#weather-strip.loading{justify-content:center;align-items:center;font-size:12px;color:var(--muted,#9ca3af);min-height:36px;padding:6px 24px;}";
+  document.head.appendChild(style);
+}
+
+function _wmoEmoji(code) {
+  if (code === 0)  return "☀️";   // ☀️
+  if (code <= 2)   return "🌤️"; // 🌤️
+  if (code === 3)  return "☁️";   // ☁️
+  if (code <= 48)  return "🌫️"; // 🌫️
+  if (code <= 57)  return "🌦️"; // 🌦️
+  if (code <= 67)  return "🌧️"; // 🌧️
+  if (code <= 77)  return "❄️";   // ❄️
+  if (code <= 82)  return "🌦️"; // 🌦️
+  if (code <= 86)  return "🌨️"; // 🌨️
+  return "⛈️"; // ⛈️
+}
+
+async function _fetchWeather(strip) {
+  try {
+    const url = "https://api.open-meteo.com/v1/forecast?latitude=-33.45&longitude=-70.67" +
+      "&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=America%2FSantiago&forecast_days=7";
+    const res  = await fetch(url);
+    const data = await res.json();
+    const { time, weather_code, temperature_2m_max, temperature_2m_min } = data.daily;
+    const DAYS = ["Dom","Lun","Mar","Mié","Jue","Vie","Sáb"];
+    strip.className = "";
+    strip.innerHTML = time.map(function(t, i) {
+      const d      = new Date(t + "T12:00:00");
+      const isToday = i === 0;
+      const name   = isToday ? "Hoy" : DAYS[d.getDay()];
+      const emoji  = _wmoEmoji(weather_code[i]);
+      const max    = Math.round(temperature_2m_max[i]);
+      const min    = Math.round(temperature_2m_min[i]);
+      return "<div class='w-day" + (isToday ? " today" : "") + "'>" +
+        "<span class='w-name'>" + name + "</span>" +
+        "<span class='w-ico'>" + emoji + "</span>" +
+        "<span class='w-temp'>" + max + "° / " + min + "°</span>" +
+        "</div>";
+    }).join("");
+  } catch(e) {
+    if (strip) strip.style.display = "none";
+  }
+}
+
+function _insertWeatherStrip() {
+  if (document.getElementById("weather-strip")) return;
+  _injectWeatherStyles();
+  const strip = document.createElement("div");
+  strip.id        = "weather-strip";
+  strip.className = "loading";
+  strip.textContent = "Cargando clima…";
+  const header = document.querySelector("header");
+  if (header && header.nextSibling) {
+    header.parentNode.insertBefore(strip, header.nextSibling);
+  } else if (header) {
+    header.parentNode.appendChild(strip);
+  }
+  _fetchWeather(strip);
+}
+
 // ── SETUP AUTH ────────────────────────────────────────────────
 /**
  * setupAuth({ modulo, onReady, loginErrorId? })
  *
- * @param {string}   modulo       — "controller" | "asistencia_ruta" | "operacional" | "finanzas"
+ * @param {string}   modulo       — "controller" | "asistencia_ruta" | "operacional" | "finanzas" | "sla" | "incidencias"
  * @param {Function} onReady      — async (user, roles) => void
  * @param {string}   loginErrorId — ID del div de error en el login (default "login-error")
  *
@@ -192,6 +271,9 @@ export function setupAuth({ modulo, onReady, loginErrorId = "login-error" }) {
       if (loginEl) loginEl.style.display = "none";
       if (appEl)   appEl.style.display   = "flex";
 
+      // Mostrar strip de clima (todos los módulos, todos los roles)
+      _insertWeatherStrip();
+
       // Rellenar user chip
       const avatarEl = document.getElementById("user-avatar");
       const nameEl   = document.getElementById("user-name");
@@ -210,3 +292,6 @@ export function setupAuth({ modulo, onReady, loginErrorId = "login-error" }) {
     }
   });
 }
+
+/** Exportada para módulos que no usan setupAuth() (ej: Controller). */
+export { _insertWeatherStrip as insertWeatherStrip };
