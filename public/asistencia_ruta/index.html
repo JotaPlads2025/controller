@@ -105,6 +105,12 @@
   .card-meta { display: flex; justify-content: space-between; font-size: 11px; color: var(--muted); }
   .card-razon { font-size: 11px; color: var(--muted2); margin-top: 6px; font-style: italic; }
   .eta { font-size: 12px; font-weight: 600; }
+  #comunas-bar { display:none; flex-wrap:wrap; gap:6px; align-items:center; padding:10px 20px; background:var(--card); border-bottom:1px solid var(--border); }
+  .chip-comuna { background:transparent; border:1.5px solid var(--border); color:var(--text); padding:4px 10px; border-radius:20px; font-size:11px; font-weight:600; cursor:pointer; display:inline-flex; align-items:center; gap:5px; transition:.15s; }
+  .chip-comuna:hover { opacity:.8; }
+  .chip-comuna.active { background:rgba(255,255,255,.1); }
+  .chip-limpiar { background:transparent; border:1px solid var(--border); color:var(--muted); padding:3px 9px; border-radius:20px; font-size:11px; cursor:pointer; }
+  .chip-limpiar:hover { color:var(--text); }
   .eta.ok { color: var(--verde); }
   .eta.warn { color: var(--amarillo); }
   .eta.crit { color: var(--rojo); }
@@ -218,6 +224,8 @@
         ⚙️ <span>Operacional</span>
       </a>
       <a id="nav-finanzas" href="/finanzas" class="nav-item" style="display:none">💰 <span>Finanzas</span></a>
+      <a id="nav-sla" href="/sla" class="nav-item" style="display:none">📊 SLA CX</a>
+      <a id="nav-incidencias"  href="/incidencias"     class="nav-item" style="display:none">📊 Incidencias</a>
     </nav>
 
     <!-- MAIN CONTENT -->
@@ -270,6 +278,9 @@
         </div>
       </div>
     </div>
+
+    <!-- CHIPS COMUNAS -->
+    <div id="comunas-bar"></div>
 
     <!-- GRID CONDUCTORES -->
     <div id="conductores-grid"></div>
@@ -454,17 +465,17 @@ function procesarDatos(rows, filename) {
     if (velocidad !== null && velocidad > 0 && pendientes > 0) {
       const horasRest = pendientes / velocidad;
       const horaTermino = new Date(ahora.getTime() + horasRest * 3600000);
-      const cutoff22 = new Date(); cutoff22.setHours(22, 0, 0, 0);
-      const cutoff21 = new Date(); cutoff21.setHours(21, 0, 0, 0);
+      const cutoff21 = new Date(); cutoff21.setHours(21, 0, 0, 0); // 🔴 rojo desde 21:00
+      const cutoff20 = new Date(); cutoff20.setHours(20, 0, 0, 0); // 🟡 amarillo desde 20:00
       const esMañana = horaTermino.getDate() !== ahora.getDate();
       eta = (esMañana ? "mañana " : "") + horaTermino.toLocaleTimeString("es-CL", { hour: "2-digit", minute: "2-digit" });
-      etaClase = (horaTermino >= cutoff22 || esMañana) ? "crit" : horaTermino >= cutoff21 ? "warn" : "ok";
+      etaClase = (horaTermino >= cutoff21 || esMañana) ? "crit" : horaTermino >= cutoff20 ? "warn" : "ok";
     } else if (info.entregados === 0 && pendientes > 0) {
       eta = "Sin inicio";
       etaClase = "warn";
     }
 
-    // Alarma — umbral cierre operacional: 22:00
+    // Alarma — umbral cierre operacional: 21:00 rojo · 20:00 amarillo
     let alarma = "verde";
     let razon = "En tiempo";
     const horaActual = ahora.getHours() + ahora.getMinutes() / 60;
@@ -509,6 +520,7 @@ function procesarDatos(rows, filename) {
   }
   _resultados = resultados;
   renderResumen(resultados, filename, timestamp);
+  renderComunaChips(resultados);
   renderConductores(resultados);
 
   document.getElementById("upload-zone").style.display = "none";
@@ -613,21 +625,76 @@ function renderConductores(resultados) {
 
 // Filtro solo alarmas
 let soloAlarmas = false;
+let filtroComuna = null;
+let _vistaActual = 'cards';
 let _resultados = []; // datos del último Excel cargado
 let _snapshotAnterior = null; // snapshot de la carga previa para comparación
+
+function aplicarFiltros() {
+  // Cards
+  document.querySelectorAll('.conductor-card').forEach(card => {
+    const passAlarma = !soloAlarmas || card.dataset.alarma !== 'verde';
+    const passComuna = !filtroComuna || card.dataset.comuna === filtroComuna;
+    card.classList.toggle('hidden', !(passAlarma && passComuna));
+  });
+  // Lista
+  document.querySelectorAll('#lista-body tr').forEach(row => {
+    const passAlarma = !soloAlarmas || row.dataset.alarma !== 'verde';
+    const passComuna = !filtroComuna || row.dataset.comuna === filtroComuna;
+    row.classList.toggle('hidden', !(passAlarma && passComuna));
+  });
+  // Chips highlight
+  document.querySelectorAll('.chip-comuna').forEach(chip => {
+    chip.classList.toggle('active', chip.dataset.comuna === filtroComuna);
+  });
+}
+
+function renderComunaChips(resultados) {
+  const bar = document.getElementById('comunas-bar');
+  if (!bar) return;
+  // Agrupar por comunaPrincipal
+  const comunas = {};
+  resultados.forEach(c => {
+    const com = c.comunaPrincipal;
+    if (!com || com === '—') return;
+    if (!comunas[com]) comunas[com] = { count: 0, alarmas: [] };
+    comunas[com].count++;
+    comunas[com].alarmas.push(c.alarma);
+  });
+  const sorted = Object.entries(comunas).sort((a, b) => {
+    const rank = { rojo: 0, amarillo: 1, verde: 2 };
+    const worstA = Math.min(...a[1].alarmas.map(al => rank[al] ?? 2));
+    const worstB = Math.min(...b[1].alarmas.map(al => rank[al] ?? 2));
+    return worstA - worstB || b[1].count - a[1].count;
+  });
+  if (!sorted.length) { bar.style.display = 'none'; return; }
+  const colorMap = { rojo: 'var(--rojo)', amarillo: 'var(--amarillo)', verde: 'var(--verde)' };
+  bar.style.display = 'flex';
+  bar.innerHTML =
+    '<span style="font-size:11px;color:var(--muted);margin-right:4px;white-space:nowrap">📍 Zona:</span>' +
+    sorted.map(([com, data]) => {
+      const worst = data.alarmas.includes('rojo') ? 'rojo' : data.alarmas.includes('amarillo') ? 'amarillo' : 'verde';
+      const col = colorMap[worst];
+      const isActive = filtroComuna === com;
+      return `<button class="chip-comuna${isActive ? ' active' : ''}" data-comuna="${com}" onclick="toggleFiltroComuna('${com}')" style="border-color:${col}">` +
+        `<span style="background:${col};width:7px;height:7px;border-radius:50%;display:inline-block;flex-shrink:0"></span>` +
+        `${com} <span style="opacity:.65;font-weight:400">(${data.count})</span></button>`;
+    }).join('') +
+    (filtroComuna ? '<button class="chip-limpiar" onclick="toggleFiltroComuna(null)">✕ Limpiar</button>' : '');
+}
+
+window.toggleFiltroComuna = function(comuna) {
+  filtroComuna = (filtroComuna === comuna) ? null : comuna;
+  renderComunaChips(_resultados);
+  aplicarFiltros();
+};
+
 window.toggleSoloAlarmas = function() {
   soloAlarmas = !soloAlarmas;
   document.getElementById("btn-alarmas").classList.toggle("active", soloAlarmas);
-  document.querySelectorAll(".conductor-card").forEach(card => {
-    if (soloAlarmas) card.classList.toggle("hidden", card.classList.contains("verde"));
-    else card.classList.remove("hidden");
-  });
+  aplicarFiltros();
 };
 
-
-
-// --- VISTA CARDS / LISTA ---
-let _vistaActual = 'cards';
 window.setVista = function(v) {
   _vistaActual = v;
   document.getElementById('conductores-grid').style.display = v === 'cards' ? 'grid' : 'none';
@@ -645,7 +712,7 @@ function renderLista(resultados) {
     const color = colores[c.alarma];
     const velText = c.velocidad !== null ? Math.round(c.velocidad) + " pdds/h" + (c.velocidadFuente === "estimado" ? " ~" : c.velocidadFuente === "aprox" ? " ≈" : "") : (c.entregados > 0 ? "calculando..." : "sin datos");
     const etaText = c.eta || '—';
-    return `<tr>
+    return `<tr data-alarma="${c.alarma}" data-comuna="${c.comunaPrincipal}">
       <td style="color:var(--muted);font-size:12px">${i+1}</td>
       <td style="font-weight:600">${c.nombre}</td>
       <td style="color:var(--muted2);font-size:12px">📍 ${c.comunaPrincipal}</td>
@@ -685,6 +752,54 @@ window.cerrarDia = async function() {
   const rojos   = _resultados.filter(c => c.alarma === "rojo");
   const amarillos = _resultados.filter(c => c.alarma === "amarillo");
 
+  // ── Análisis de carga recomendada para conductores críticos (ETA ≥ 22:00) ──
+  function parseEtaH(etaStr) {
+    if (!etaStr || etaStr === '—') return null;
+    const esManana = etaStr.includes('mañana');
+    const t = etaStr.replace('mañana ', '').trim().split(':');
+    const h = parseInt(t[0]) + parseInt(t[1] || 0) / 60;
+    return esManana ? h + 24 : h;
+  }
+
+  const criticos = _resultados.filter(c => {
+    if (!c.eta || !c.velocidad || c.velocidad <= 0) return false;
+    const etaH = parseEtaH(c.eta);
+    return etaH !== null && etaH >= 22;
+  });
+
+  // Stats por comuna: promedio ETA + cantidad conductores
+  const comunaStats = {};
+  _resultados.forEach(c => {
+    const com = c.comunaPrincipal || '—';
+    if (!comunaStats[com]) comunaStats[com] = { conductores: 0, etaHoras: [], rojos: 0, amarillos: 0 };
+    comunaStats[com].conductores++;
+    if (c.alarma === 'rojo') comunaStats[com].rojos++;
+    if (c.alarma === 'amarillo') comunaStats[com].amarillos++;
+    if (c.eta && !c.eta.includes('mañana')) {
+      const etaH = parseEtaH(c.eta);
+      if (etaH !== null) comunaStats[com].etaHoras.push(etaH);
+    }
+  });
+  function hToStr(h) {
+    const hh = Math.floor(h % 24), mm = Math.round((h % 1) * 60);
+    return String(hh).padStart(2,'0') + ':' + String(mm).padStart(2,'0');
+  }
+
+  const analisis = criticos.map(c => {
+    const etaH   = parseEtaH(c.eta);
+    const horasT = c.total / c.velocidad;            // horas totales estimadas
+    const inicioH = etaH - horasT;                   // hora estimada de inicio
+    const maxPaq  = Math.max(0, Math.floor(c.velocidad * (22 - inicioH)));
+    const inicioStr = (() => {
+      const h = Math.floor(inicioH % 24);
+      const m = Math.round((inicioH % 1) * 60);
+      return String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0');
+    })();
+    return { nombre: c.nombre, comuna: c.comunaPrincipal, total: c.total, eta: c.eta,
+             velocidad: Math.round(c.velocidad), inicioEst: inicioStr, maxRecomendado: maxPaq,
+             diferencia: c.total - maxPaq };
+  });
+
   // ① Exportar Excel con SheetJS
   const filas = _resultados.map(c => ({
     "Conductor": c.nombre,
@@ -713,6 +828,45 @@ window.cerrarDia = async function() {
   ws["!cols"] = [20,16,14,12,12,10,12,24,16,14].map(w => ({ wch: w }));
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, "Cierre " + fecha);
+
+  // Hoja 2: análisis de carga recomendada (solo si hay críticos)
+  if (analisis.length) {
+    const filasAnalisis = analisis.map(a => ({
+      "Conductor": a.nombre,
+      "Comuna": a.comuna,
+      "Pedidos asignados": a.total,
+      "ETA real": a.eta,
+      "Inicio estimado": a.inicioEst,
+      "Velocidad (pdds/h)": a.velocidad,
+      "Máx. recomendado (22:00)": a.maxRecomendado,
+      "Exceso de carga": a.diferencia > 0 ? "+" + a.diferencia + " pedidos de más" : "—"
+    }));
+    const wsAnal = XLSX.utils.json_to_sheet(filasAnalisis);
+    wsAnal["!cols"] = [22,16,16,12,14,16,20,20].map(w => ({ wch: w }));
+    XLSX.utils.book_append_sheet(wb, wsAnal, "Análisis carga");
+  }
+
+  // Hoja 3: resumen por comuna
+  const filasComuna = Object.entries(comunaStats)
+    .sort((a, b) => b[1].conductores - a[1].conductores)
+    .map(([com, s]) => {
+      const promedioEta = s.etaHoras.length
+        ? hToStr(s.etaHoras.reduce((a, b) => a + b, 0) / s.etaHoras.length)
+        : '—';
+      const estado = s.rojos > 0 ? '🔴 Crítica' : s.amarillos > 0 ? '🟡 Atención' : '🟢 Normal';
+      return {
+        "Comuna": com,
+        "Conductores": s.conductores,
+        "🔴 Rojos": s.rojos,
+        "🟡 Amarillos": s.amarillos,
+        "ETA promedio": promedioEta,
+        "Estado zona": estado
+      };
+    });
+  const wsCom = XLSX.utils.json_to_sheet(filasComuna);
+  wsCom["!cols"] = [20, 12, 10, 12, 14, 14].map(w => ({ wch: w }));
+  XLSX.utils.book_append_sheet(wb, wsCom, "Por comuna");
+
   XLSX.writeFile(wb, "Cierre_Ruta_" + fecha + ".xlsx");
 
   // ② Guardar resumen en Firestore /historial_ruta/{fecha}
@@ -731,6 +885,64 @@ window.cerrarDia = async function() {
     };
     await setDoc(doc(db, "historial_ruta", fecha), resumen);
     btn.textContent = "✅ Día cerrado";
+
+    // Panel de recomendaciones post-cierre
+    if (analisis.length) {
+      const panelHtml = analisis.map(a => {
+        const exceso = a.diferencia > 0;
+        return `<div style="padding:10px 12px;border:1px solid ${exceso ? 'var(--rojo)' : 'var(--border)'};border-radius:8px;margin-bottom:8px">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:4px">
+            <strong style="font-size:13px">${a.nombre}</strong>
+            <span style="font-size:11px;color:var(--muted)">📍 ${a.comuna}</span>
+          </div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:6px">
+            Terminó ≈ ${a.eta} · inicio ≈ ${a.inicioEst} · ${a.velocidad} pdds/h
+          </div>
+          <div style="display:flex;gap:10px;font-size:12px">
+            <span>Asignado: <strong>${a.total} pedidos</strong></span>
+            <span>Máx. para terminar a las 22:00: <strong style="color:${exceso ? 'var(--verde)' : 'var(--muted)'}">${a.maxRecomendado} pedidos</strong></span>
+            ${exceso ? `<span style="color:var(--rojo);font-weight:700">+${a.diferencia} de exceso</span>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+      const panel = document.createElement('div');
+      panel.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;max-width:560px;width:90%;max-height:80vh;overflow-y:auto;z-index:9999;box-shadow:0 20px 60px rgba(0,0,0,.5)';
+      panel.innerHTML = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px">
+          <h3 style="margin:0;font-size:15px">📊 Análisis de carga — conductores críticos</h3>
+          <button onclick="this.closest('div[style]').remove()" style="background:none;border:none;color:var(--muted);font-size:18px;cursor:pointer">✕</button>
+        </div>
+        <p style="font-size:12px;color:var(--muted);margin-bottom:12px">Conductores con ETA ≥ 22:00. Se muestra la carga máxima recomendada para que terminen a tiempo con su velocidad real del día.</p>
+        ${panelHtml}
+        <div style="margin-top:16px;border-top:1px solid var(--border);padding-top:12px">
+          <div style="font-size:12px;font-weight:700;margin-bottom:8px;color:var(--muted)">📍 RESUMEN POR COMUNA</div>
+          <table style="width:100%;border-collapse:collapse;font-size:12px">
+            <thead><tr style="color:var(--muted);font-size:10px;text-transform:uppercase">
+              <th style="text-align:left;padding:4px 6px">Comuna</th>
+              <th style="text-align:center;padding:4px 6px">Cond.</th>
+              <th style="text-align:center;padding:4px 6px">🔴</th>
+              <th style="text-align:center;padding:4px 6px">🟡</th>
+              <th style="text-align:center;padding:4px 6px">ETA prom.</th>
+            </tr></thead>
+            <tbody>${Object.entries(comunaStats)
+              .sort((a,b) => b[1].rojos - a[1].rojos || b[1].amarillos - a[1].amarillos || b[1].conductores - a[1].conductores)
+              .map(([com, s]) => {
+                const prom = s.etaHoras.length ? hToStr(s.etaHoras.reduce((a,b)=>a+b,0)/s.etaHoras.length) : '—';
+                const rowColor = s.rojos > 0 ? 'rgba(239,68,68,.08)' : s.amarillos > 0 ? 'rgba(245,158,11,.06)' : '';
+                return `<tr style="border-bottom:1px solid var(--border);background:${rowColor}">
+                  <td style="padding:5px 6px;font-weight:600">${com}</td>
+                  <td style="text-align:center;padding:5px 6px">${s.conductores}</td>
+                  <td style="text-align:center;padding:5px 6px;color:var(--rojo)">${s.rojos || '—'}</td>
+                  <td style="text-align:center;padding:5px 6px;color:var(--amarillo)">${s.amarillos || '—'}</td>
+                  <td style="text-align:center;padding:5px 6px;font-family:monospace">${prom}</td>
+                </tr>`;
+              }).join('')}
+            </tbody>
+          </table>
+        </div>
+        <p style="font-size:11px;color:var(--muted2);margin-top:10px">Este análisis también está en las hojas "Análisis carga" y "Por comuna" del Excel descargado.</p>`;
+      document.body.appendChild(panel);
+    }
     btn.style.background = "rgba(34,197,94,0.25)";
     setTimeout(() => {
       btn.disabled = false;

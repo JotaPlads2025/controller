@@ -18,6 +18,7 @@ Plataforma modular interna de Recíbelo, construida sobre Firebase. Cuatro módu
 | `/asistencia_ruta` | `public/asistencia_ruta/index.html` | ✅ Activo | Monitor de rutas horario para equipo de cierre |
 | `/operacional` | `public/operacional/index.html` | ✅ Activo | Liquidaciones conductores, Primera Milla, Bonos, Tarifas — rol `operacional` |
 | `/finanzas` | `public/finanzas/index.html` | ✅ Activo | Facturación de cara a clientes — rol `finanzas` |
+| `/sla` | `public/sla/index.html` | ✅ Activo | Análisis SLA CX — efectividad de entregas diaria — rol `sla` |
 | *(compartido)* | `public/shared/auth.js` | ✅ Activo | Módulo ES compartido: Firebase init, nk/fmt/safeId, setupAuth() |
 
 **URL base**: https://proyectos-ctrl.web.app
@@ -117,6 +118,7 @@ Gestionado en Firestore, **sin tocar código**. Documento `/config/acceso` con e
     "sflores@recibelo.cl":       ["controller"],
     "vmeza@recibelo.cl":         ["asistencia_ruta"],
     "wii.nni@gmail.com":         ["controller", "asistencia_ruta"],
+    "inaki@recibelo.cl":         ["sla"],
     "Ylauquen@gmail.com":        ["asistencia_ruta"]
   }
 }
@@ -211,8 +213,8 @@ Se aplica automáticamente en `buscarTarifa()` como paso 0 antes de los demás f
 
 ### `/fin_reembolsos/{id}`
 Reembolsos/indemnizaciones por cliente.
-Campos: `cliente_key`, `cliente_nombre`, `origen`, `monto`, `motivo` (Siniestro|Trazabilidad|Producto dañado|Otro), `descripcion`, `periodo` (YYYY-MM), `creado_por`, `creado_fecha`.
-Por ahora son informativos — aparecen en el PDF pre-factura pero no descuentan del total (pendiente decisión de Finanzas).
+Campos: `cliente_key`, `cliente_nombre`, `origen`, `monto`, `motivo` (Siniestro|Trazabilidad|Producto dañado|Otro), `descripcion`, `pedido_id` (opcional), `periodo` (YYYY-MM), `creado_por`, `creado_fecha`.
+**Son informativos** — aparecen en el PDF pre-factura pero NO descuentan del total (confirmado con Finanzas mayo 2026). Algunos van con nota de crédito por fuera.
 
 ### `/fin_facturacion/{periodo}`
 Snapshot de cierre de mes (YYYY-MM).
@@ -223,13 +225,15 @@ Campos: `periodo`, `fecha_cierre`, `cerrado_por`, `total`, `total_reembolsos`, `
 ## Módulo Finanzas — Arquitectura y lógica
 
 ### Flujo completo
-1. **Tarifas** → subir Excel de tarifas desde pestaña Tarifas → sync a `fin_tarifas_clientes` vía batch writes
+1. **Tarifas** → subir Excel desde pestaña Tarifas → sync a `fin_tarifas_clientes` (borra todo antes de escribir para evitar duplicados)
 2. **Paquetes** → cargar uno o más Excels en pestaña Carga → se combinan con flatMap
 3. **Calcular** → botón "Calcular cobro" → procesa todas las filas → genera RESULTADOS + INCIDENCIAS
 4. **Revisar incidencias** → SIN MATCH muestran botón "Mapear →" → alias se guarda y se re-procesa automáticamente
-5. **PDF/ZIP** → botón "📄 PDF ▾" → PDF individual (pide nombre) o ZIP todos los clientes
-6. **Reembolsos** → pestaña Reembolsos → registrar items por cliente, motivo y período
-7. **Cerrar mes** → botón "✅ Cerrar mes" → guarda snapshot en `fin_facturacion/{YYYY-MM}`
+5. **Recalcular** → si se edita una tarifa sin recargar la página → botón "🔄 Recalcular" recarga tarifas de Firestore y vuelve a calcular con los Excels en memoria
+6. **PDF/ZIP** → botón "📄 PDF ▾" → PDF individual (pide nombre) o ZIP todos los clientes
+7. **Reembolsos** → pestaña Reembolsos → registrar por cliente/motivo/período/ID pedido (informativos, no descuentan)
+8. **Cerrar mes** → botón "✅ Cerrar mes" → guarda snapshot en `fin_facturacion/{YYYY-MM}`
+9. **Historial** → pestaña Historial → lista todos los cierres guardados con totales
 
 ### buscarTarifa() — cadena de fallbacks
 0. Alias manual (`fin_aliases`)
@@ -279,6 +283,8 @@ service cloud.firestore {
     match /fin_aliases/{doc}          { allow write: if request.auth != null; }
     match /fin_reembolsos/{doc}       { allow write: if request.auth != null; }
     match /fin_facturacion/{doc}      { allow write: if request.auth != null; }
+    match /fin_feriados/{doc}         { allow write: if request.auth != null; }
+    match /fin_conductores/{doc}      { allow write: if request.auth != null; }
     match /historial_ruta/{doc}       { allow write: if request.auth != null; }
   }
 }
@@ -288,7 +294,9 @@ service cloud.firestore {
 
 ## CRITICO: Truncamiento de archivos grandes
 
-**Sintoma**: Al editar `dashboard_procesos.html` con la herramienta Edit y copiar con `cp`, el archivo se trunca. Los emojis y template literals del JS rompen la escritura bash.
+**Sintoma**: Al editar archivos grandes de JS con la herramienta Edit o con bash heredocs, el archivo se puede truncar. Los emojis y template literals del JS rompen la escritura.
+
+**Aplica a**: `dashboard_procesos.html` Y `public/finanzas/index.html` (1500+ líneas con template literals complejas).
 
 **Solucion**: SIEMPRE usar Python para escribir o modificar el archivo:
 ```python
@@ -329,19 +337,82 @@ cp "dashboard_procesos.html" "public/index.html"
 - [x] PDF pre-factura por cliente (jsPDF) + ZIP masivo de todos los clientes (JSZip)
 - [x] Reembolsos/indemnizaciones — registro por cliente/período/motivo, aparecen en PDF
 - [x] Cierre de mes — snapshot guardado en `fin_facturacion/{YYYY-MM}`
+- [x] Pestaña Historial en /finanzas — lista cierres desde `fin_facturacion` con totales
+- [x] Botón Recalcular — recarga tarifas de Firestore y recalcula sin re-subir Excel
+- [x] Campo ID Pedido en formulario de reembolsos
+- [x] Fix duplicados en sync tarifas — ahora borra todos antes de escribir
+- [x] Fix dropdown cliente en reembolsos — position:absolute, z-index:200
+- [x] Reglas Firestore: agregadas fin_feriados y fin_conductores
 - [ ] BUG: ETA cruza medianoche en asistencia_ruta — fix pendiente (ver detalles abajo)
 - [ ] Migrar Controller (/) al sistema de roles (actualmente usa emails[] plano)
 - [x] Módulo compartido `public/shared/auth.js` — auth, nk, fmt, safeId, setupAuth()
+- [x] Widget clima Open-Meteo (7 días, Santiago) — inyectado automáticamente en todos los módulos via shared/auth.js
+- [x] Módulo `/sla` — SLA CX: merge ingreso+egreso, clasificación automática, revisión manual, export Excel
 - [ ] Campo `ubicacion_doc` (SharePoint links) por completar en procesos
 - [ ] Coleccion `/historial` (Controller) por implementar
-- [ ] Reembolsos: decidir con Finanzas si descuentan del total o solo son informativos
-- [ ] Cobro de retiro (Primera Milla cara al cliente) — lógica documentada, no implementada aún
+- [x] Reembolsos: confirmado con Finanzas → son informativos (no descuentan, van con nota de crédito)
+- [x] Cobro de retiro PM (cara al cliente) — fórmula: `floor((200 - totalMes) / 10)` días × tarifa_retiros
+  - Ej: 180 pedidos → 2 días cobrados · 150 pedidos → 5 días cobrados
+  - Solo aplica si cliente tuvo < 200 retiros en el mes y tarifa_retiros > 0
+  - Usa columna Fecha del Excel para agrupar (detecta: Fecha egreso/creación/inicio/ingreso/pedido)
 
 ---
 
+## Módulo SLA CX (`/sla`)
+
+### Flujo
+1. Subir Excel ingreso y/o egreso del día anterior (mismo formato estándar)
+2. Merge por columna J (ID interna), deduplicar — egreso tiene prioridad si aparece en ambos
+3. Clasificar cada paquete no entregado con reglas automáticas
+4. Mostrar resumen por cliente con SLA %
+5. Tab Revisión → Iñaki ajusta clasificaciones manualmente con un click
+6. Exportar Excel con detalle + hoja Resumen
+
+### Fórmula SLA
+`SLA = Completados / (Total − Pendientes − Incidencias Recíbelo) × 100`
+- Pendientes = Estado ML (col T) = "Pendiente" OR Estado sistema en ["En ruta","En depósito","Redespacho"]
+- Incidencias Recíbelo = paquetes clasificados como culpa Recíbelo (auto o manual)
+
+### Columnas clave
+| Col | Nombre | Uso |
+|-----|--------|-----|
+| A | Fecha creación | Días transcurridos |
+| C | Fecha egreso | — |
+| D | Cliente | Agrupación resultados |
+| F | Tags | Detectar "oficina","FLEX" |
+| J | ID interna | Merge + deduplicar |
+| S | Estado sistema | "Completado" = entregado · "No Completado","Cancelado" = no entregado |
+| T | Estado ML | "Pendiente" = excluir SLA |
+| U | Estado SubML | "Buyer Rescheduled","Not Visited","Receiver Absent"... |
+| AD | Comentario conductor | Texto libre chofer |
+| AG | Motivo no entrega | Dropdown |
+| AI | Hora entrega | Detectar horario tardío (≥20h / ≥22h) |
+
+### Estados Estado ML (col T)
+`cancelled`, `delivered`, `Pendiente`, `ready_to_ship`, `shipped`
+
+### Estados SubML (col U)
+`Buyer Rescheduled`, `Not Visited`, `Out for Delivery`, `Printed`, `Ready to Print`, `Receiver Absent`, (Vacías)
+
+### Reglas de clasificación
+- Motivo + comentario vacíos → 🔴 Recíbelo
+- "Otros" sin comentario → 🔴 Recíbelo
+- "Paquete no corresponde a ruta" → 🔴 Recíbelo
+- "Sin moradores" + hora ≥22:00 → 🔴 Recíbelo | hora 20-22 → 🟠 Revisar | normal + SubML Receiver Absent → 🟡 Cliente
+- "Reprogramar" + SubML Buyer Rescheduled → 🟡 Cliente | SubML Not Visited → 🔴 Recíbelo | resto → 🟠 Revisar
+- "Domicilio laboral" + tag oficina + >1 día → 🔴 Recíbelo
+- "Dirección errónea" sin comentario → 🔴 Recíbelo | con comentario → 🟠 Revisar
+- "Se niega"/"No contesta" + hora ≥22:00 → 🔴 Recíbelo | 20-22 → 🟠 Revisar | normal → 🟡 Cliente
+
+### Rol Firestore
+Agregar en `/config/acceso`: `"inaki@recibelo.cl": ["sla"]` (o quien corresponda del equipo CX)
+
 ## Próxima sesión — prioridades
 
-1. **BUG CRÍTICO — ETA cruza medianoche** (`public/asistencia_ruta/index.html`)
+1. **DEPLOY PENDIENTE** — ejecutar `firebase deploy --only hosting` + hard refresh (Ctrl+Shift+R)
+   - Incluye: Historial, Recalcular, ID Pedido, fix duplicados tarifas, fix dropdown, fórmula Retiro PM
+
+2. **BUG CRÍTICO — ETA cruza medianoche** (`public/asistencia_ruta/index.html`)
    - Síntoma: ETA de "12:27 a.m." se marca VERDE porque `getHours()` devuelve 0 (menor que 22)
    - Fix: comparar contra datetime fijo en vez de número de hora:
      ```javascript
@@ -350,13 +421,10 @@ cp "dashboard_procesos.html" "public/index.html"
      etaClase = horaTermino >= cutoff22 ? "crit" : horaTermino >= cutoff21 ? "warn" : "ok";
      ```
    - Aplica en: cálculo de `etaClase` dentro de `procesarDatos`
-   - Además: mostrar indicador visual "mañana" en la card si la ETA cruza medianoche
 
-2. **Reembolsos** — confirmar con Finanzas si descuentan del cobro o son solo informativos, y ajustar PDF y tabla de cobros
+3. **ubicacion_doc** — agregar links SharePoint a procesos en Controller que los tengan
 
-3. **Cobro de retiro PM** — implementar lógica de Primera Milla cara al cliente en `/finanzas`
-
-4. **ubicacion_doc** — agregar links SharePoint a procesos que los tengan
+4. **Migrar Controller** (/) al sistema de roles (actualmente usa emails[] plano)
 
 ---
 
@@ -398,9 +466,15 @@ Comunas rurales: TALAGANTE, MARIA PINTO, PIRQUE, BUIN, NOS, CURACAVI, CALERA DE 
 - `TABLA` → tarifa variable, marcar como incidencia TABLA
 - `RECIBELO` no es integrador — es cliente directo
 
-### Cobro de retiro Primera Milla (cara al cliente) — pendiente de implementar
+### Cobro de retiro Primera Milla (cara al cliente) — IMPLEMENTADO
 
-Si el cliente tuvo menos de 200 pedidos retirados en el mes → cobrar `Tarifa Retiros` por cada día con menos de 10 retiros.
+Fórmula acordada con Finanzas (mayo 2026):
+`días_cobrados = floor((200 - totalRetirosMes) / 10)`
+
+- Solo aplica si `totalRetirosMes < 200` y `tarifa_retiros > 0`
+- Ejemplo: 180 pedidos → (200-180)/10 = 2 días · 150 pedidos → (200-150)/10 = 5 días
+- `tarifa_retiros` viene de la columna "Tarifa Retiros" en `fin_tarifas_clientes`
+- El cobro se suma al total del cliente y aparece en el PDF pre-factura
 
 ---
 

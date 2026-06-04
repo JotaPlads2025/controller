@@ -162,6 +162,9 @@ select.search-input{cursor:pointer;}
       <a id="nav-asistencia" href="/asistencia_ruta" class="nav-item">🚚 Asistencia Ruta</a>
       <a id="nav-operacional" href="/operacional" class="nav-item">⚙️ Operacional</a>
       <a href="/finanzas" class="nav-item active">💰 Finanzas</a>
+    
+      <a id="nav-sla" href="/sla" class="nav-item">📊 SLA CX</a>
+      <a id="nav-incidencias"  href="/incidencias"     class="nav-item" style="display:none">📊 Incidencias</a>
     </nav>
 
     <div class="app-content">
@@ -176,6 +179,8 @@ select.search-input{cursor:pointer;}
         <div class="tab" onclick="switchTab('reembolsos',this)">💸 Reembolsos</div>
         <div class="tab" onclick="switchTab('tarifas',this)">📋 Tarifas</div>
         <div class="tab" onclick="switchTab('carga',this)">📂 Carga</div>
+        <div class="tab" onclick="switchTab('historial',this);cargarHistorialCierres()">📜 Historial</div>
+        <div class="tab" onclick="switchTab('separar',this)">📦 Separar por Cliente</div>
       </div>
 
       <!-- TAB COBROS -->
@@ -207,6 +212,7 @@ select.search-input{cursor:pointer;}
                   </div>
                 </div>
                 <button class="btn-export" onclick="exportarExcel()">⬇ Excel</button>
+                <button id="btn-recalcular" onclick="recalcular()" style="background:rgba(59,130,246,0.15);border:1px solid rgba(59,130,246,0.4);color:var(--azul);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:none" title="Recarga las tarifas desde Firestore y vuelve a calcular con los mismos Excels cargados">🔄 Recalcular</button>
                 <button id="btn-cerrar-mes" onclick="abrirCierreMes()" style="background:rgba(34,197,94,0.15);border:1px solid rgba(34,197,94,0.4);color:var(--verde);border-radius:8px;padding:6px 14px;font-size:12px;font-weight:700;cursor:pointer;display:none">✅ Cerrar mes</button>
               </div>
             </div>
@@ -220,6 +226,7 @@ select.search-input{cursor:pointer;}
                   <th class="sortable" style="text-align:right" onclick="sortCobros('nd')">Next Day</th>
                   <th class="sortable" style="text-align:right" onclick="sortCobros('turbo')">Turbo</th>
                   <th class="sortable" style="text-align:right" onclick="sortCobros('recargos')">Recargos</th>
+                  <th class="sortable" style="text-align:right" onclick="sortCobros('retiro_monto')" title="Días con < 10 retiros × tarifa retiro">Retiro PM</th>
                   <th class="sortable" style="text-align:right" onclick="sortCobros('total')">Total</th>
                 </tr>
               </thead>
@@ -250,11 +257,11 @@ select.search-input{cursor:pointer;}
                 <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">PERÍODO</label>
                 <input type="month" id="rb-periodo" style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
               </div>
-              <div>
+              <div style="position:relative">
                 <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">CLIENTE</label>
                 <input type="text" id="rb-cliente-search" placeholder="Buscar cliente..." oninput="filtrarRBClientes()" autocomplete="off"
                   style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
-                <div id="rb-cliente-drop" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:160px;overflow-y:auto;position:relative;z-index:10"></div>
+                <div id="rb-cliente-drop" style="display:none;background:var(--card);border:1px solid var(--border);border-radius:8px;margin-top:2px;max-height:200px;overflow-y:auto;position:absolute;left:0;right:0;z-index:200;box-shadow:0 8px 24px rgba(0,0,0,0.4)"></div>
                 <input type="hidden" id="rb-cliente-key">
                 <input type="hidden" id="rb-cliente-nombre">
                 <input type="hidden" id="rb-cliente-origen">
@@ -271,6 +278,11 @@ select.search-input{cursor:pointer;}
               <div>
                 <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">MONTO ($)</label>
                 <input type="number" id="rb-monto" placeholder="Ej: 25000" min="0"
+                  style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
+              </div>
+              <div>
+                <label style="font-size:11px;color:var(--muted2);font-weight:600;display:block;margin-bottom:4px">ID PEDIDO (opcional)</label>
+                <input type="text" id="rb-pedido-id" placeholder="Ej: #123456 o ORD-789"
                   style="width:100%;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 12px;color:var(--text);font-size:13px">
               </div>
               <div>
@@ -299,7 +311,7 @@ select.search-input{cursor:pointer;}
               <table>
                 <thead><tr>
                   <th>Período</th><th>Cliente</th><th>Origen</th><th>Motivo</th>
-                  <th style="text-align:right">Monto</th><th>Descripción</th><th></th>
+                  <th style="text-align:right">Monto</th><th>ID Pedido</th><th>Descripción</th><th></th>
                 </tr></thead>
                 <tbody id="tbody-reembolsos"></tbody>
               </table>
@@ -559,7 +571,7 @@ window.guardarTarifaEdit=async function(){
     const up=raw.toUpperCase();
     if(up===""||up==="SIN SERV"||up==="SIN TARIFA")updates[c.k]=null;
     else if(up==="TABLA")updates[c.k]="TABLA";
-    else{const n=parseFloat(raw);updates[c.k]=isNaN(n)?null:n;}
+    else{const n=parseFloat(raw);updates[c.k]=isNaN(n)?null:Math.round(n);}// CLP: sin centavos
   });
   try{
     await setDoc(doc(db,"fin_tarifas_clientes",_editKey),updates,{merge:true});
@@ -616,10 +628,23 @@ window.syncTarifas=function(inp){
           const vs=String(v).trim().toUpperCase();
           if(["SIN SERV","SIN TARIFA","CPS","NOTA","SIN RECARGO"].includes(vs)){data[fk]=null;}
           else if(vs==="TABLA"){data[fk]="TABLA";}
-          else{const n=parseFloat(String(v).replace(",","."));data[fk]=isNaN(n)?null:n;}
+          else{const n=parseFloat(String(v).replace(",","."));data[fk]=isNaN(n)?null:Math.round(n);}// CLP: sin centavos
         });
         docs.push({key:fullKey,data});
       }
+
+      // Borrar documentos existentes primero (evita duplicados por cambio de key)
+      setLog("Eliminando tarifas anteriores...");
+      try{
+        const snapExist=await getDocs(collection(db,"fin_tarifas_clientes"));
+        const existIds=snapExist.docs.map(d=>d.id);
+        for(let i=0;i<existIds.length;i+=500){
+          const bDel=writeBatch(db);
+          existIds.slice(i,i+500).forEach(id=>bDel.delete(doc(db,"fin_tarifas_clientes",id)));
+          await bDel.commit();
+        }
+        setLog(`Eliminados ${existIds.length} docs anteriores. Subiendo nuevos...`);
+      }catch(eDel){console.warn("No se pudo borrar anteriores:",eDel.message);}
 
       // Batch write (máx 500 por batch)
       let ok=0,err=0;
@@ -740,7 +765,8 @@ window.procesar=function(){
   const colNombreCP=findCol("Nombre CP","nombre cp")||"Nombre CP";
   const colComuna=findCol("Comuna","comuna")||"Comuna";
   const colEstado=findCol("Estado sistema","estado sistema")||"Estado sistema";
-  log(`Columnas detectadas: Cliente="${colCliente}", Tags="${colTags}", CP="${colNombreCP}", Comuna="${colComuna}", Estado="${colEstado}"`);
+  const colFecha=findCol("Fecha egreso","Fecha creación","Fecha inicio","Fecha ingreso","Fecha pedido","Fecha","fecha")||null;
+  log(`Columnas detectadas: Cliente="${colCliente}", Tags="${colTags}", CP="${colNombreCP}", Comuna="${colComuna}", Estado="${colEstado}"${colFecha?`, Fecha="${colFecha}"`:' ⚠ Sin columna fecha (Retiro PM omitido)'}`);
 
   const cobros={};
   INCIDENCIAS=[];
@@ -749,6 +775,28 @@ window.procesar=function(){
   // Combinar todos los lotes
   const todasFilas=PAQUETES_LOTES.flatMap(l=>l.filas.map(f=>({...f,_fuente:l.nombre})));
   log(`✓ Total filas combinadas: ${todasFilas.toLocaleString?todasFilas.length.toLocaleString():todasFilas.length}`);
+
+  // ── PRE-PASS: agrupar retiros por cliente+día (TODOS los estados) ─────────
+  const retirosDiarios={}; // ck → { "YYYY-MM-DD": count }
+  if(colFecha){
+    todasFilas.forEach(row=>{
+      const clienteRaw=String(row[colCliente]||"");
+      const nombreCP=String(row[colNombreCP]||"");
+      const origenNk=nk(clienteRaw.split(" ")[0]);
+      const esIntegrador=INTEGRADORES.includes(origenNk);
+      const clienteReal=esIntegrador?nombreCP:clienteRaw;
+      const ck=nk(clienteReal);
+      if(!ck)return;
+      const fechaVal=row[colFecha];
+      let fechaStr=null;
+      if(typeof fechaVal==="number"&&fechaVal>0){
+        try{const p=XLSX.SSF.parse_date_code(fechaVal);fechaStr=p.y+"-"+String(p.m).padStart(2,"0")+"-"+String(p.d).padStart(2,"0");}catch(e){}
+      }else if(fechaVal){fechaStr=String(fechaVal).slice(0,10);}
+      if(!fechaStr||fechaStr.length<10)return;
+      if(!retirosDiarios[ck])retirosDiarios[ck]={};
+      retirosDiarios[ck][fechaStr]=(retirosDiarios[ck][fechaStr]||0)+1;
+    });
+  }
   todasFilas.forEach((row,idx)=>{
     const estado=String(row[colEstado]||"");
     if(estado!=="Completado"){omitidos++;return;}
@@ -798,11 +846,40 @@ window.procesar=function(){
   log(`⚠ Sin match: ${sinmatch} | TABLA: ${tabla} | Sin tarifa: ${sintarifa}`);
   log(`✓ ${RESULTADOS.length} clientes procesados`);
 
+  // ── COBRO RETIRO PM (cara al cliente) ─────────────────────────────────────
+  // Regla: si cliente tuvo < 200 retiros en el mes →
+  //        cobrar tarifa_retiros × días con < 10 retiros (solo días con movimiento)
+  let retiroAplicados=0;
+  RESULTADOS.forEach(r=>{
+    r.retiro_dias=0; r.retiro_monto=0; r.retiro_total_mes=0;
+    if(!colFecha)return;
+    const ck=nk(r.nombre);
+    const diasData=retirosDiarios[ck];
+    if(!diasData)return;
+    const entries=Object.entries(diasData);
+    const totalMes=entries.reduce((a,[,n])=>a+n,0);
+    r.retiro_total_mes=totalMes;
+    if(totalMes>=200)return; // cliente grande → no aplica
+    const tarifa=buscarTarifa(ck,r.origen);
+    const tarifaRetiro=tarifa?.tarifa_retiros;
+    if(!tarifaRetiro||tarifaRetiro==="TABLA"||Number(tarifaRetiro)<=0)return;
+    // Fórmula acordada con Finanzas: floor((200 - totalMes) / 10)
+    // Ej: 180 pedidos → (200-180)/10 = 2 días | 150 pedidos → (200-150)/10 = 5 días
+    const diasCobrados=Math.floor((200-totalMes)/10);
+    if(diasCobrados<=0)return;
+    r.retiro_dias=diasCobrados;
+    r.retiro_monto=diasCobrados*Number(tarifaRetiro);
+    r.total+=r.retiro_monto;
+    retiroAplicados++;
+  });
+  if(colFecha)log(`✓ Retiro PM: ${retiroAplicados} cliente(s) con cargo (< 200 retiros/mes o días < 10)`);
+
   renderCobros();
   renderIncidencias();
 
   // Mostrar botones
   document.getElementById("btn-cerrar-mes").style.display="block";
+  document.getElementById("btn-recalcular").style.display="block";
 
   // cambiar a pestaña cobros
   document.querySelectorAll(".tab").forEach((t,i)=>{if(i===0)t.click();});
@@ -877,8 +954,9 @@ window.filtrarTabla=function(){
       <td class="monto">${r.nd?("$"+fmt(r.nd)):"—"}</td>
       <td class="monto">${r.turbo?("$"+fmt(r.turbo)):"—"}</td>
       <td class="monto">${r.recargos?("$"+fmt(r.recargos)):"—"}</td>
+      <td class="monto">${r.retiro_monto?`<span title="${r.retiro_dias} día(s) con < 10 retiros · total mes: ${r.retiro_total_mes||0}">${"$"+fmt(r.retiro_monto)}</span>`:"—"}</td>
       <td class="monto total">$${fmt(r.total)}</td>
-    </tr>`).join(""):`<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>`;
+    </tr>`).join(""):`<tr><td colspan="9" style="text-align:center;padding:40px;color:var(--muted)">Sin resultados</td></tr>`;
 };
 
 // --- RENDER INCIDENCIAS ---
@@ -922,7 +1000,9 @@ window.exportarExcel=function(){
   const ws=XLSX.utils.json_to_sheet(RESULTADOS.map(r=>({
     "Cliente":r.nombre,"Origen":r.origen,"Paquetes":r.pkts,
     "Sameday":r.sd,"Next Day":r.nd,"Turbo":r.turbo,
-    "Recargos":r.recargos,"Total":r.total,"Incidencias":r.incids
+    "Recargos":r.recargos,"Retiro PM":r.retiro_monto||0,
+    "Total":r.total,"Incidencias":r.incids,
+    "Retiro días":r.retiro_dias||0,"Retiro total mes":r.retiro_total_mes||0
   })));
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,"Cobros",ws);
@@ -1031,7 +1111,8 @@ function renderReembolsos(periodo){
     <td><span class="badge-orig badge-${r.origen||""}">${r.origen||"—"}</span></td>
     <td><span style="background:rgba(239,68,68,0.15);color:var(--rojo);border-radius:6px;padding:2px 8px;font-size:11px;font-weight:700">${r.motivo||"—"}</span></td>
     <td style="text-align:right;font-weight:700;color:var(--rojo)">$${fmt(r.monto||0)}</td>
-    <td style="font-size:12px;color:var(--muted2);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.descripcion||""}">${r.descripcion||"—"}</td>
+    <td style="font-size:12px;color:var(--muted2);white-space:nowrap">${r.pedido_id||"—"}</td>
+    <td style="font-size:12px;color:var(--muted2);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${r.descripcion||""}">${r.descripcion||"—"}</td>
     <td><button onclick="eliminarReembolso('${r._id}')" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:13px" title="Eliminar">🗑</button></td>
   </tr>`).join("");
 }
@@ -1042,7 +1123,7 @@ window.filtrarRBClientes=function(){
   const lista=(q?TARIFAS_RAW.filter(t=>nk(t.nombre||"").includes(q)):TARIFAS_RAW).slice(0,30);
   const drop=document.getElementById("rb-cliente-drop");
   drop.style.display=lista.length?"block":"none";
-  drop.innerHTML=lista.map(t=>`<div onclick="selRBCliente('${t._key.replace(/'/g,"\\'")}','${(t.nombre||"").replace(/'/g,"\\'")}','${(t.origen||"")}')}"
+  drop.innerHTML=lista.map(t=>`<div onclick="selRBCliente('${t._key.replace(/'/g,"\\'")}','${(t.nombre||"").replace(/'/g,"\\'")}','${(t.origen||"")}')"
     style="padding:8px 12px;cursor:pointer;font-size:13px;border-radius:6px" onmouseover="this.style.background='var(--border)'" onmouseout="this.style.background='none'">
     <span style="font-weight:600">${t.nombre||"—"}</span>
     <span class="badge-orig badge-${t.origen||""}" style="font-size:10px;margin-left:6px">${t.origen||""}</span>
@@ -1063,6 +1144,7 @@ window.guardarReembolso=async function(){
   const monto=parseFloat(document.getElementById("rb-monto").value)||0;
   const motivo=document.getElementById("rb-motivo").value;
   const desc=document.getElementById("rb-descripcion").value.trim();
+  const pedidoId=document.getElementById("rb-pedido-id").value.trim();
   const cKey=document.getElementById("rb-cliente-key").value;
   const cNombre=document.getElementById("rb-cliente-nombre").value;
   const cOrigen=document.getElementById("rb-cliente-origen").value;
@@ -1071,7 +1153,7 @@ window.guardarReembolso=async function(){
   msg.style.color="var(--muted2)";msg.textContent="Guardando...";
   const id="rb_"+Date.now();
   const data={cliente_key:cKey,cliente_nombre:cNombre,origen:cOrigen,
-    monto,motivo,descripcion:desc,periodo,
+    monto,motivo,descripcion:desc,pedido_id:pedidoId,periodo,
     creado_por:_currentUser?.email||"",creado_fecha:new Date().toISOString()};
   try{
     await setDoc(doc(db,"fin_reembolsos",id),data);
@@ -1080,6 +1162,7 @@ window.guardarReembolso=async function(){
     msg.style.color="var(--verde)";msg.textContent="✓ Guardado correctamente";
     document.getElementById("rb-monto").value="";
     document.getElementById("rb-descripcion").value="";
+    document.getElementById("rb-pedido-id").value="";
     setTimeout(()=>msg.textContent="",3000);
   }catch(e){msg.style.color="var(--rojo)";msg.textContent="Error: "+e.message;}
 };
@@ -1149,6 +1232,14 @@ function generarPDFCliente(cliente,rbPorCliente,periodo){
   if(cliente.nd)rows.push(["Next Day","$"+fmt(cliente.nd)]);
   if(cliente.turbo)rows.push(["Turbo","$"+fmt(cliente.turbo)]);
   if(cliente.recargos)rows.push(["Recargos por tamaño","$"+fmt(cliente.recargos)]);
+  if(cliente.retiro_monto>0){
+    const diasStr=`${cliente.retiro_dias} día(s) con < 10 retiros (total mes: ${cliente.retiro_total_mes||0})`;
+    rows.push([{content:"Retiro PM — "+diasStr,styles:{textColor:[239,68,68]}},"$"+fmt(cliente.retiro_monto)]);
+  }
+  if(cliente.retiro_monto>0){
+    const sub=cliente.total-cliente.retiro_monto;
+    rows.push([{content:"Subtotal envíos",styles:{textColor:[107,114,128]}},"$"+fmt(sub)]);
+  }
   rows.push([{content:"TOTAL A COBRAR",styles:{fontStyle:"bold",fillColor:[26,29,39]}},{content:"$"+fmt(cliente.total),styles:{fontStyle:"bold",fillColor:[26,29,39],textColor:[34,197,94]}}]);
   doc.autoTable({startY:y,margin:{left:mg,right:mg},
     head:[["Concepto","Monto"]],body:rows,
@@ -1254,6 +1345,75 @@ window.confirmarCierre=async function(){
   }
 };
 
+// --- RECALCULAR ---
+window.recalcular=async function(){
+  if(!PAQUETES_LOTES.length){toast("No hay Excels cargados en memoria. Vuelve a subir el archivo.","err");return;}
+  const btn=document.getElementById("btn-recalcular");
+  const orig=btn.textContent;
+  btn.disabled=true;btn.textContent="⏳ Cargando tarifas...";
+  try{
+    await cargarTarifasFS();
+    await cargarAliases();
+    btn.textContent="⏳ Calculando...";
+    procesar();
+    toast("✓ Recalculado con tarifas actualizadas","ok");
+  }catch(e){
+    toast("Error al recalcular: "+e.message,"err");
+  }finally{
+    btn.disabled=false;btn.textContent=orig;
+  }
+};
+
+// --- HISTORIAL DE CIERRES ---
+let _historialCargado=false;
+let _historialData=[];
+
+window.verDetalleCierre=function(idx){
+  const item=_historialData[idx];
+  if(!item)return;
+  const fuentes=(item.fuentes||[]).join(", ")||"—";
+  alert("Cierre "+item.periodo+"\n\nClientes: "+(item.clientes||0)+"\nPaquetes: "+(item.paquetes||0).toLocaleString("es-CL")+"\nTotal: $"+fmt(item.total||0)+"\nReembolsos: $"+fmt(item.total_reembolsos||0)+"\nFuentes: "+fuentes);
+};
+
+window.cargarHistorialCierres=async function(){
+  if(_historialCargado)return;
+  _historialCargado=true;
+  const tbody=document.getElementById("tbody-historial");
+  const loading=document.getElementById("historial-loading");
+  if(loading)loading.textContent="Cargando...";
+  try{
+    const snap=await getDocs(collection(db,"fin_facturacion"));
+    _historialData=[];
+    snap.forEach(d=>_historialData.push({id:d.id,...d.data()}));
+    _historialData.sort((a,b)=>b.periodo.localeCompare(a.periodo));
+    if(!_historialData.length){
+      tbody.innerHTML='<tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Sin cierres registrados aún.</td></tr>';
+      if(loading)loading.textContent="";return;
+    }
+    const meses=["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+    tbody.innerHTML=_historialData.map((item,idx)=>{
+      const [yr,mo]=item.periodo.split("-");
+      const periodoLabel=meses[parseInt(mo)-1]+" "+yr;
+      const fecha=item.fecha_cierre?new Date(item.fecha_cierre).toLocaleString("es-CL"):"—";
+      const rb=item.total_reembolsos||0;
+      return "<tr>"
+        +"<td style='font-weight:700'>"+periodoLabel+"</td>"
+        +"<td style='font-size:12px;color:var(--muted2)'>"+fecha+"</td>"
+        +"<td style='font-size:12px;color:var(--muted2)'>"+(item.cerrado_por||"—")+"</td>"
+        +"<td class='monto'>"+(item.clientes||0)+"</td>"
+        +"<td class='monto'>"+((item.paquetes||0).toLocaleString("es-CL"))+"</td>"
+        +"<td class='monto' style='color:var(--verde);font-weight:700'>$"+fmt(item.total||0)+"</td>"
+        +"<td class='monto' style='color:var(--rojo)'>"+(rb?"$"+fmt(rb):"—")+"</td>"
+        +"<td><button onclick='verDetalleCierre("+idx+")' style='background:none;border:1px solid var(--border);color:var(--muted2);border-radius:6px;padding:3px 10px;font-size:11px;cursor:pointer'>Ver</button></td>"
+        +"</tr>";
+    }).join("");
+    if(loading)loading.textContent=_historialData.length+" cierre(s)";
+  }catch(e){
+    tbody.innerHTML="<tr><td colspan='8' style='text-align:center;padding:24px;color:var(--rojo)'>Error al cargar: "+e.message+"</td></tr>";
+    if(loading)loading.textContent="";
+  }
+};
+
 // --- SORTING ---
 let _sortCobros={key:"total",dir:-1};
 let _sortTarifas={key:"nombre",dir:1};
@@ -1282,7 +1442,201 @@ window.sortTarifas=function(key){
 };
 
 
+
+// ── SEPARAR POR CLIENTE ───────────────────────────────────────────────────
+const SEP_FILES = {1: null, 2: null, 3: null};
+
+window.sepFileSelected = function(n, input) {
+  const f = input.files[0];
+  SEP_FILES[n] = f || null;
+  const sub = document.getElementById('sep-sub-' + n);
+  const card = document.getElementById('sep-card-' + n);
+  if (f) {
+    sub.textContent = f.name;
+    sub.style.color = 'var(--verde,#22c55e)';
+    card.style.borderColor = 'var(--verde,#22c55e)';
+  } else {
+    sub.textContent = 'Haz clic para cargar';
+    sub.style.color = '';
+    card.style.borderColor = '';
+  }
+  const tieneArchivo = Object.values(SEP_FILES).some(v => v !== null);
+  document.getElementById('sep-btn').disabled = !tieneArchivo;
+};
+
+window.sepProcesar = async function() {
+  const btn = document.getElementById('sep-btn');
+  const log = document.getElementById('sep-log');
+  btn.disabled = true;
+  log.style.display = 'block';
+  log.innerHTML = '';
+
+  function sepLog(msg, color) {
+    log.innerHTML += (color ? '<span style="color:' + color + '">' + msg + '</span>' : msg) + '\n';
+    log.scrollTop = log.scrollHeight;
+  }
+
+  try {
+    const archivos = Object.values(SEP_FILES).filter(f => f !== null);
+    sepLog('>>> Iniciando proceso con ' + archivos.length + ' archivo(s)...\n');
+
+    // 1. Leer y consolidar
+    sepLog('[1/4] Leyendo archivos...');
+    const COLS_ELIMINAR = ['nombre conductor egreso', 'nombre conductor devolucion', 'nombre conductor devolución'];
+    let todas = [];
+    for (const f of archivos) {
+      const buf = await f.arrayBuffer();
+      const wb  = XLSX.read(buf, {type:'array', raw:false});
+      const nombreHoja = wb.SheetNames.find(n => ['BD','DB'].includes(n.trim().toUpperCase())) || wb.SheetNames[0];
+      const ws  = wb.Sheets[nombreHoja];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      todas = todas.concat(rows);
+      sepLog('  ✓ ' + f.name + ': ' + rows.length.toLocaleString('es-CL') + ' filas', 'var(--verde,#22c55e)');
+    }
+    sepLog('  Total: ' + todas.length.toLocaleString('es-CL') + ' filas\n');
+
+    // Normalizar headers
+    const normalizar = s => String(s||'').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    todas = todas.map(row => {
+      const r = {};
+      Object.keys(row).forEach(k => { r[normalizar(k)] = row[k]; });
+      return r;
+    });
+
+    // 2. Eliminar columnas de conductor
+    sepLog('[2/4] Eliminando columnas de conductor...');
+    const colsPresentes = COLS_ELIMINAR.filter(c => todas.length > 0 && normalizar(c) in todas[0]);
+    if (colsPresentes.length) {
+      todas = todas.map(row => {
+        const r = {...row};
+        colsPresentes.forEach(c => delete r[normalizar(c)]);
+        return r;
+      });
+      colsPresentes.forEach(c => sepLog('  ✓ Eliminada: ' + c, 'var(--amarillo,#eab308)'));
+    } else {
+      sepLog('  • No se encontraron columnas de conductor');
+    }
+
+    // 3. Filtrar Completado
+    sepLog('\n[3/4] Filtrando Estado sistema = Completado...');
+    const filtradas = todas.filter(r => {
+      const est = String(r['estado sistema'] || r['estado_sistema'] || '').trim();
+      return est === 'Completado';
+    });
+    const descartados = todas.length - filtradas.length;
+    sepLog('  ✓ Completados: ' + filtradas.length.toLocaleString('es-CL'), 'var(--verde,#22c55e)');
+    sepLog('  • Descartados: ' + descartados.toLocaleString('es-CL') + ' (' + ((100*filtradas.length/todas.length)||0).toFixed(1) + '%)');
+
+    if (!filtradas.length) {
+      sepLog('\n⚠️  Sin filas completadas — verifica la columna "Estado sistema"', 'var(--rojo,#ef4444)');
+      btn.disabled = false;
+      return;
+    }
+
+    // 4. Separar por cliente
+    sepLog('\n[4/4] Separando por cliente...');
+    const porCliente = {};
+    filtradas.forEach(r => {
+      const cli = String(r['cliente'] || '(sin cliente)').trim();
+      if (!porCliente[cli]) porCliente[cli] = [];
+      porCliente[cli].push(r);
+    });
+    const clientes = Object.keys(porCliente).sort();
+    clientes.forEach(c => sepLog('  ✓ ' + c + ': ' + porCliente[c].length.toLocaleString('es-CL') + ' paquetes'));
+
+    // 5. Crear ZIP
+    sepLog('\nCreando ZIP...');
+    const zip = new JSZip();
+    for (const cli of clientes) {
+      const rows = porCliente[cli];
+      const wb2  = XLSX.utils.book_new();
+      const ws2  = XLSX.utils.json_to_sheet(rows);
+      XLSX.utils.book_append_sheet(wb2, ws2, 'Paquetes');
+      const buf2 = XLSX.write(wb2, {bookType:'xlsx', type:'array'});
+      const nombre = cli.replace(/[\/:"*?<>|]/g,'_') + '.xlsx';
+      zip.file(nombre, buf2);
+    }
+
+    const ts = new Date().toISOString().slice(0,16).replace('T','_').replace(':','');
+    const zipBlob = await zip.generateAsync({type:'blob', compression:'DEFLATE'});
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'Paquetes_por_Cliente_' + ts + '.zip';
+    a.click();
+    URL.revokeObjectURL(url);
+
+    sepLog('\n' + '='.repeat(50), 'var(--muted)');
+    sepLog('✅ ¡COMPLETADO!', 'var(--verde,#22c55e)');
+    sepLog('  Clientes: ' + clientes.length, 'var(--verde,#22c55e)');
+    sepLog('  Paquetes en ZIP: ' + filtradas.length.toLocaleString('es-CL'), 'var(--verde,#22c55e)');
+    sepLog('  Descargando ZIP...', 'var(--verde,#22c55e)');
+
+  } catch(e) {
+    sepLog('\n❌ ERROR: ' + e.message, 'var(--rojo,#ef4444)');
+  }
+
+  btn.disabled = false;
+};
+
 </script>
+
+<!-- TAB HISTORIAL -->
+<div id="tab-historial" class="tab-content">
+  <div class="table-wrap" style="margin-top:0">
+    <div class="table-header">
+      <h3>Historial de cierres de mes</h3>
+      <span id="historial-loading" style="font-size:12px;color:var(--muted)"></span>
+    </div>
+    <table>
+      <thead><tr>
+        <th>Período</th><th>Fecha cierre</th><th>Cerrado por</th>
+        <th class="monto">Clientes</th><th class="monto">Paquetes</th>
+        <th class="monto">Total</th><th class="monto">Reembolsos</th><th></th>
+      </tr></thead>
+      <tbody id="tbody-historial"><tr><td colspan="8" style="text-align:center;padding:40px;color:var(--muted)">Haz clic en Historial para cargar.</td></tr></tbody>
+    </table>
+  </div>
+</div>
+
+<div id="tab-separar" class="tab-content">
+  <div style="max-width:700px">
+    <h3 style="font-size:16px;font-weight:700;margin-bottom:6px">📦 Separar paquetes por cliente</h3>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:20px">
+      Carga hasta 3 Excel de paquetes. Solo se incluyen filas con <strong>Estado sistema = Completado</strong>.
+      Se genera un ZIP con un Excel por cliente, sin las columnas de nombre de conductor.
+    </p>
+
+    <!-- Zona de carga -->
+    <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:16px" id="sep-dropzone">
+      <label id="sep-card-1" style="flex:1;min-width:160px;max-width:220px;border:2px dashed var(--border);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--card)">
+        <input type="file" id="sep-file-1" accept=".xlsx,.xls" style="display:none" onchange="sepFileSelected(1,this)">
+        <div style="font-size:24px;margin-bottom:6px">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Archivo 1</div>
+        <div id="sep-sub-1" style="font-size:11px;color:var(--muted);margin-top:4px">Haz clic para cargar</div>
+      </label>
+      <label id="sep-card-2" style="flex:1;min-width:160px;max-width:220px;border:2px dashed var(--border);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--card)">
+        <input type="file" id="sep-file-2" accept=".xlsx,.xls" style="display:none" onchange="sepFileSelected(2,this)">
+        <div style="font-size:24px;margin-bottom:6px">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Archivo 2 <span style="color:var(--muted);font-weight:400">(opcional)</span></div>
+        <div id="sep-sub-2" style="font-size:11px;color:var(--muted);margin-top:4px">Haz clic para cargar</div>
+      </label>
+      <label id="sep-card-3" style="flex:1;min-width:160px;max-width:220px;border:2px dashed var(--border);border-radius:10px;padding:18px 14px;text-align:center;cursor:pointer;transition:border-color .15s;background:var(--card)">
+        <input type="file" id="sep-file-3" accept=".xlsx,.xls" style="display:none" onchange="sepFileSelected(3,this)">
+        <div style="font-size:24px;margin-bottom:6px">📂</div>
+        <div style="font-size:12px;font-weight:600;color:var(--text)">Archivo 3 <span style="color:var(--muted);font-weight:400">(opcional)</span></div>
+        <div id="sep-sub-3" style="font-size:11px;color:var(--muted);margin-top:4px">Haz clic para cargar</div>
+      </label>
+    </div>
+
+    <button id="sep-btn" onclick="sepProcesar()" style="background:var(--verde,#22c55e);color:#000;border:none;padding:11px 24px;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;margin-bottom:16px" disabled>
+      ⚡ Procesar y descargar ZIP
+    </button>
+
+    <!-- Log de progreso -->
+    <div id="sep-log" style="display:none;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:monospace;font-size:12px;white-space:pre-wrap;max-height:280px;overflow-y:auto;line-height:1.7"></div>
+  </div>
+</div>
 
 <!-- MODAL CIERRE MES -->
 <div id="cierre-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.6);z-index:9999;align-items:center;justify-content:center">

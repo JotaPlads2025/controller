@@ -1,0 +1,743 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Recibelo — Incidencias</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0f1117;--card:#1a1d27;--border:#2a2d3e;--text:#e8eaf0;--muted:#6b7280;--muted2:#9ca3af;
+  --verde:#22c55e;--rojo:#ef4444;--naranja:#f97316;--amarillo:#eab308;--accent:#3b82f6;--fg:#e8eaf0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;font-size:13px}
+body{display:flex;flex-direction:column}
+#loading{display:flex;align-items:center;justify-content:center;flex:1;font-size:14px;color:var(--muted2)}
+#login-screen{display:none;align-items:center;justify-content:center;min-height:100vh}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px 36px;text-align:center;width:340px}
+.login-card h2{font-size:18px;font-weight:700;margin-bottom:6px}
+.login-card p{color:var(--muted2);font-size:13px;margin-bottom:24px}
+.btn-login{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--bg);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:10px;transition:background .15s}
+.btn-login:hover{background:rgba(255,255,255,0.05)}
+.login-error{color:var(--rojo);font-size:12px;margin-top:10px;min-height:18px}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+.badge-module{background:rgba(239,68,68,0.15);color:var(--rojo);border-radius:6px;padding:3px 10px;font-size:11px;font-weight:700;letter-spacing:.04em}
+.user-chip{display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 12px;border-radius:8px;border:1px solid var(--border);transition:background .15s}
+.user-chip:hover{background:rgba(255,255,255,0.05)}
+.user-avatar{width:26px;height:26px;border-radius:50%;background:var(--rojo);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:#fff}
+.user-name{font-size:12px;color:var(--muted2)}
+.app-shell{display:flex;flex:1;overflow:hidden}
+.sidebar{width:200px;min-width:200px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;padding:16px 0;overflow-y:auto}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted2);text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,0.04);color:var(--text)}
+.nav-item.active{color:var(--text);border-left-color:var(--rojo);background:rgba(239,68,68,0.08)}
+.app-content{flex:1;overflow-y:auto;padding:24px}
+.tabs{display:flex;gap:4px;border-bottom:1px solid var(--border);margin-bottom:20px;flex-wrap:wrap}
+.tab{padding:9px 14px;font-size:13px;font-weight:600;color:var(--muted2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--text)}
+.tab.active{color:var(--text);border-bottom-color:var(--rojo)}
+.tab-content{display:none}.tab-content.active{display:block}
+.kpi-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{border-radius:10px;padding:14px 16px;text-align:center}
+.kpi-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px;opacity:.85}
+.kpi-value{font-size:32px;font-weight:800}
+.kpi-delta{font-size:11px;margin-top:4px;opacity:.8}
+.chart-row{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:16px;margin-bottom:20px}
+.chart-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px}
+.chart-card h4{font-size:13px;font-weight:700;color:var(--muted2);margin-bottom:12px;text-transform:uppercase;letter-spacing:.04em}
+.chart-wrap{position:relative;height:220px}
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table th{background:rgba(59,130,246,0.15);color:var(--accent);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;padding:8px 10px;text-align:left;white-space:nowrap}
+.data-table td{padding:7px 10px;border-bottom:1px solid var(--border);vertical-align:top}
+.data-table tr:hover td{background:rgba(255,255,255,0.03)}
+.table-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:8px}
+.section-title{font-size:16px;font-weight:700;margin:20px 0 12px;display:flex;align-items:center;gap:8px}
+.empty-state{text-align:center;padding:40px;color:var(--muted)}
+.btn{padding:9px 18px;border-radius:8px;border:none;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s}
+.btn-primary{background:var(--rojo);color:#fff}.btn-primary:hover{background:#dc2626}
+.btn-primary:disabled{background:#374151;cursor:not-allowed}
+.btn-sec{background:var(--card);border:1px solid var(--border);color:var(--text)}
+.btn-sec:hover{background:rgba(255,255,255,0.05)}
+.btn-verde{background:rgba(34,197,94,.15);border:1px solid rgba(34,197,94,.35);color:#4ade80;font-weight:700}
+.btn-verde:hover{background:rgba(34,197,94,.25)}
+.form-group{margin-bottom:14px}
+.form-label{font-size:11px;font-weight:700;color:var(--muted2);text-transform:uppercase;letter-spacing:.04em;display:block;margin-bottom:6px}
+.form-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:9px 12px;font-size:13px}
+textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:14px;font-family:monospace;font-size:12px;white-space:pre-wrap;max-height:200px;overflow-y:auto;line-height:1.7;margin-top:12px}
+.hint{font-size:12px;color:var(--muted);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="loading" style="height:100vh">Cargando…</div>
+<div id="login-screen">
+  <div class="login-card">
+    <h2>📊 Incidencias</h2>
+    <p>Inicia sesión con tu cuenta Recíbelo</p>
+    <button class="btn-login" onclick="signInWithMicrosoft()">
+      <svg width="18" height="18" viewBox="0 0 21 21"><rect x="1" y="1" width="9" height="9" fill="#f25022"/><rect x="11" y="1" width="9" height="9" fill="#7fba00"/><rect x="1" y="11" width="9" height="9" fill="#00a4ef"/><rect x="11" y="11" width="9" height="9" fill="#ffb900"/></svg>
+      Continuar con Microsoft
+    </button>
+    <button class="btn-login" onclick="signInWithGoogle()">
+      <svg width="18" height="18" viewBox="0 0 48 48"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.2l6.8-6.8C35.8 2.2 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.2 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v8.5h12.4c-.5 2.8-2.1 5.1-4.4 6.7l6.9 5.3c4-3.7 6.2-9.2 6.2-16z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-2.9-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.3 0 20 0 24s1 7.7 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-6.9-5.3c-2.1 1.4-4.8 2.3-9 2.3-6.2 0-11.5-3.7-13.4-9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>
+      Continuar con Google
+    </button>
+    <div class="login-error" id="login-error"></div>
+  </div>
+</div>
+
+<div id="app" style="display:none;flex-direction:column;height:100%">
+  <header>
+    <div style="display:flex;align-items:center;gap:12px">
+      <span style="font-weight:800;font-size:15px">Recíbelo</span>
+      <span class="badge-module">📊 Incidencias</span>
+    </div>
+    <div class="user-chip" onclick="doSignOut()">
+      <div class="user-avatar" id="user-avatar">?</div>
+      <div class="user-name" id="user-name"></div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar">
+      <div class="nav-section">Módulos</div>
+      <a id="nav-controller"   href="/"               class="nav-item" style="display:none">📋 Controller</a>
+      <a id="nav-asistencia"   href="/asistencia_ruta" class="nav-item" style="display:none">🚚 Asistencia Ruta</a>
+      <a id="nav-operacional"  href="/operacional"     class="nav-item" style="display:none">⚙️ Operacional</a>
+      <a id="nav-finanzas"     href="/finanzas"        class="nav-item" style="display:none">💰 Finanzas</a>
+      <a id="nav-sla"          href="/sla"             class="nav-item" style="display:none">📈 SLA CX</a>
+      <a id="nav-incidencias"  href="/incidencias"     class="nav-item active">📊 Incidencias</a>
+    </nav>
+
+    <div class="app-content">
+      <div style="margin-bottom:20px">
+        <h1 style="font-size:20px;font-weight:800">📊 Incidencias Semanales</h1>
+        <p style="color:var(--muted2);font-size:13px;margin-top:4px">Análisis semanal desde el Libro de Incidencias en SharePoint.</p>
+      </div>
+
+      <!-- CONTROLES -->
+      <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:20px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Desde</label>
+          <input type="date" id="fecha-desde" class="form-input" style="width:145px">
+        </div>
+        <div class="form-group" style="margin:0">
+          <label class="form-label">Hasta</label>
+          <input type="date" id="fecha-hasta" class="form-input" style="width:145px">
+        </div>
+        <button class="btn btn-primary" id="btn-analizar" onclick="analizar()">📊 Analizar</button>
+        <button class="btn btn-verde" id="btn-guardar" onclick="guardarSnapshot()" style="display:none">💾 Guardar snapshot</button>
+        <span id="estado-analisis" style="font-size:12px;color:var(--muted2)"></span>
+      </div>
+
+      <!-- TABS (ocultos hasta analizar) -->
+      <div id="incid-main" style="display:none">
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('dashboard',this)">📊 Dashboard</div>
+          <div class="tab" onclick="switchTab('operaciones',this)">🔧 Operaciones</div>
+          <div class="tab" onclick="switchTab('trazabilidad',this)">📍 Trazabilidad</div>
+          <div class="tab" onclick="switchTab('retiro',this)">🚚 Retiro</div>
+          <div class="tab" onclick="switchTab('comercial',this)">💼 Comercial</div>
+          <div class="tab" onclick="switchTab('enviar',this)">📧 Enviar reporte</div>
+          <div class="tab" onclick="switchTab('historial',this);loadHistorial()">📅 Historial</div>
+        </div>
+
+        <!-- DASHBOARD -->
+        <div id="tab-dashboard" class="tab-content active">
+          <div class="kpi-grid" id="kpi-grid"></div>
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Distribución por área</h4>
+              <div class="chart-wrap"><canvas id="chart-donut"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Comparación vs semana anterior</h4>
+              <div class="chart-wrap"><canvas id="chart-compare"></canvas></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- OPERACIONES -->
+        <div id="tab-operaciones" class="tab-content">
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Por tipo de incidencia</h4>
+              <div class="chart-wrap"><canvas id="chart-op-tipo"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por responsable</h4>
+              <div class="chart-wrap"><canvas id="chart-op-resp"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por cliente</h4>
+              <div class="chart-wrap"><canvas id="chart-op-cli"></canvas></div>
+            </div>
+          </div>
+          <div class="section-title">📋 Detalle completo <span id="op-count" style="font-size:12px;color:var(--muted2);font-weight:400"></span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Responsable</th></tr></thead><tbody id="tbody-op"></tbody></table></div>
+        </div>
+
+        <!-- TRAZABILIDAD -->
+        <div id="tab-trazabilidad" class="tab-content">
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Por estado</h4>
+              <div class="chart-wrap"><canvas id="chart-traz-estado"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por resolución</h4>
+              <div class="chart-wrap"><canvas id="chart-traz-resol"></canvas></div>
+            </div>
+          </div>
+          <div class="section-title">📋 Detalle completo <span id="traz-count" style="font-size:12px;color:var(--muted2);font-weight:400"></span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Estado</th><th>Observaciones</th></tr></thead><tbody id="tbody-traz"></tbody></table></div>
+        </div>
+
+        <!-- RETIRO -->
+        <div id="tab-retiro" class="tab-content">
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Por responsable</h4>
+              <div class="chart-wrap"><canvas id="chart-ret-resp"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por conductor</h4>
+              <div class="chart-wrap"><canvas id="chart-ret-cond"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por cliente</h4>
+              <div class="chart-wrap"><canvas id="chart-ret-cli"></canvas></div>
+            </div>
+          </div>
+          <div class="section-title">📋 Detalle completo <span id="ret-count" style="font-size:12px;color:var(--muted2);font-weight:400"></span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Cliente</th><th>Conductor</th><th>Responsable</th><th>Situación</th></tr></thead><tbody id="tbody-ret"></tbody></table></div>
+        </div>
+
+        <!-- COMERCIAL -->
+        <div id="tab-comercial" class="tab-content">
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Por área</h4>
+              <div class="chart-wrap"><canvas id="chart-com-area"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por tipo</h4>
+              <div class="chart-wrap"><canvas id="chart-com-tipo"></canvas></div>
+            </div>
+          </div>
+          <div class="section-title">📋 Detalle completo <span id="com-count" style="font-size:12px;color:var(--muted2);font-weight:400"></span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Área</th><th>Tipo</th><th>Responsable</th><th>Detalle</th></tr></thead><tbody id="tbody-com"></tbody></table></div>
+        </div>
+
+        <!-- ENVIAR -->
+        <div id="tab-enviar" class="tab-content">
+          <div style="max-width:600px">
+            <div class="form-group">
+              <label class="form-label">Tu nombre (aparece en el correo)</label>
+              <input type="text" id="nombre-remitente" class="form-input" placeholder="Ej: Janis Díaz" style="max-width:280px">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Comentario o instrucción para los destinatarios</label>
+              <textarea id="comentario" class="form-input" placeholder="Escribe tu comentario aquí..."></textarea>
+            </div>
+            <button class="btn btn-primary" id="btn-enviar" onclick="enviarCorreo()">📧 Enviar reporte</button>
+            <p class="hint" style="margin-top:10px">Destinatarios: jballesteros, gherrera, mrivera, jvasquez, cvergara, mcoll, bconcha, eac, wii.nni</p>
+            <div id="enviar-log" class="log-box" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- HISTORIAL -->
+        <div id="tab-historial" class="tab-content">
+          <div style="display:flex;align-items:center;gap:12px;margin-bottom:16px;flex-wrap:wrap">
+            <select id="hist-mes" onchange="renderHistorial()" style="background:var(--card);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:8px;font-size:13px">
+              <option value="">Todos los períodos</option>
+            </select>
+            <span id="hist-resumen" style="font-size:12px;color:var(--muted2)"></span>
+          </div>
+          <div class="chart-row">
+            <div class="chart-card" style="grid-column:1/-1">
+              <h4>Tendencia semanal</h4>
+              <div class="chart-wrap" style="height:180px"><canvas id="chart-tendencia"></canvas></div>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table class="data-table">
+              <thead><tr><th>Período</th><th style="text-align:right">Op.</th><th style="text-align:right">Traz.</th><th style="text-align:right">Retiro</th><th style="text-align:right">Com.</th><th style="text-align:right">Total</th><th>Guardado por</th></tr></thead>
+              <tbody id="tbody-hist"><tr><td colspan="7"><div class="empty-state">Cargando historial…</div></td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- LOG DE ANÁLISIS -->
+      <div id="analisis-log" class="log-box" style="display:none"></div>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { setupAuth, db } from "/shared/auth.js";
+import * as msal from "https://esm.sh/@azure/msal-browser@2.38.3";
+
+// ── MSAL CONFIG ───────────────────────────────────────────────
+const CLIENT_ID = '166dea1f-205e-4e2d-826b-93e47e2c555b';
+const TENANT_ID = 'd077d4c8-2f55-4f6c-a8fc-6d31129c4dc2';
+const DRIVE_ID  = 'b!9TQEK2CJrkyYjLHoCaas8Qak97o5ryFFluGHPy7ADQOpoRLffEH7SYiZmGidlRxi';
+const ITEM_ID   = '4E503BC4-90F9-43A7-8C63-99103C9D80CC';
+const SCOPES    = ['https://graph.microsoft.com/Sites.Read.All','https://graph.microsoft.com/Mail.Send'];
+
+const msalApp = new msal.PublicClientApplication({
+  auth: { clientId: CLIENT_ID, authority: `https://login.microsoftonline.com/${TENANT_ID}`, redirectUri: 'https://proyectos-ctrl.web.app/incidencias' },
+  cache: { cacheLocation: 'sessionStorage' }
+});
+
+let _graphToken = null;
+let _userEmail  = '';
+let DATA        = null;   // resultado del último análisis
+let HISTORIAL   = [];
+let _charts     = {};     // instancias Chart.js
+
+async function getToken() {
+  await msalApp.initialize();
+  const accs = msalApp.getAllAccounts();
+  if (accs.length) {
+    try { const r = await msalApp.acquireTokenSilent({ scopes: SCOPES, account: accs[0] }); return r.accessToken; } catch(e) {}
+  }
+  const r = await msalApp.acquireTokenPopup({ scopes: SCOPES, loginHint: _userEmail });
+  return r.accessToken;
+}
+
+// ── FIREBASE AUTH ─────────────────────────────────────────────
+setupAuth({
+  modulo: 'incidencias',
+  onReady: async (user) => {
+    _userEmail = user.email;
+    const hoy = new Date(), h7 = new Date(hoy);
+    h7.setDate(hoy.getDate() - 7);
+    document.getElementById('fecha-hasta').value = hoy.toISOString().slice(0,10);
+    document.getElementById('fecha-desde').value = h7.toISOString().slice(0,10);
+    document.getElementById('nombre-remitente').value = user.displayName || '';
+  }
+});
+
+// ── HELPERS ───────────────────────────────────────────────────
+window.switchTab = function(id, btn) {
+  document.querySelectorAll('.tab-content').forEach(el => { el.classList.remove('active'); el.style.display = 'none'; });
+  document.querySelectorAll('.tab').forEach(el => el.classList.remove('active'));
+  const t = document.getElementById('tab-' + id);
+  if (t) { t.style.display = 'block'; t.classList.add('active'); }
+  if (btn) btn.classList.add('active');
+};
+
+function pDate(v) {
+  if (!v) return null;
+  if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
+  const d = new Date(v); return isNaN(d.getTime()) ? null : d;
+}
+
+function fmtFecha(v) {
+  const d = pDate(v); return d ? d.toLocaleDateString('es-CL') : '-';
+}
+
+function count(arr, col) {
+  const c = {};
+  arr.forEach(r => { const k = String(r[col]||'').trim(); if(k && k!=='-') c[k]=(c[k]||0)+1; });
+  return c;
+}
+
+function top5(c) { return Object.entries(c).sort((a,b)=>b[1]-a[1]).slice(0,5); }
+
+function flecha(a, b) {
+  if (b===0) return '🆕';
+  const d = a-b; return d>0?`🔺 +${d} vs sem. ant.`:d<0?`🟢 ${d} vs sem. ant.`:'➡️ igual vs sem. ant.';
+}
+
+// ── CHARTS ────────────────────────────────────────────────────
+const COLORS = ['#3b82f6','#f97316','#22c55e','#a855f7','#eab308','#ef4444','#06b6d4','#ec4899'];
+
+function mkBar(id, labels, values, label) {
+  if (_charts[id]) _charts[id].destroy();
+  const ctx = document.getElementById(id);
+  if (!ctx) return;
+  _charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets: [{ data: values, backgroundColor: COLORS, borderRadius: 5, label }] },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { grid: { color: '#2a2d3e' }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+        y: { grid: { display: false }, ticks: { color: '#e8eaf0', font: { size: 11 } } }
+      }
+    }
+  });
+}
+
+function mkDonut(id, labels, values) {
+  if (_charts[id]) _charts[id].destroy();
+  const ctx = document.getElementById(id); if (!ctx) return;
+  _charts[id] = new Chart(ctx, {
+    type: 'doughnut',
+    data: { labels, datasets: [{ data: values, backgroundColor: ['#3b82f6','#1a5276','#22c55e','#a855f7'], borderWidth: 0 }] },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 }, padding: 12, boxWidth: 12 } } }
+    }
+  });
+}
+
+function mkLine(id, labels, datasets) {
+  if (_charts[id]) _charts[id].destroy();
+  const ctx = document.getElementById(id); if (!ctx) return;
+  _charts[id] = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+      scales: {
+        x: { grid: { color: '#2a2d3e' }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+        y: { grid: { color: '#2a2d3e' }, ticks: { color: '#9ca3af', font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+function mkGroupedBar(id, labels, datasets) {
+  if (_charts[id]) _charts[id].destroy();
+  const ctx = document.getElementById(id); if (!ctx) return;
+  _charts[id] = new Chart(ctx, {
+    type: 'bar',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#9ca3af', font: { size: 11 } } } },
+      scales: {
+        x: { grid: { display: false }, ticks: { color: '#9ca3af', font: { size: 11 } } },
+        y: { grid: { color: '#2a2d3e' }, ticks: { color: '#9ca3af', font: { size: 11 } }, beginAtZero: true }
+      }
+    }
+  });
+}
+
+// ── TABLA HELPER ──────────────────────────────────────────────
+function renderTabla(tbodyId, rows, cols, countId) {
+  document.getElementById(countId).textContent = `(${rows.length} registros)`;
+  if (!rows.length) { document.getElementById(tbodyId).innerHTML = '<tr><td colspan="10"><div class="empty-state">Sin registros en el período</div></td></tr>'; return; }
+  document.getElementById(tbodyId).innerHTML = rows.map(r =>
+    '<tr>' + cols.map(c => `<td>${c==='Fecha'||c==='FECHA'?fmtFecha(r[c]):String(r[c]||'-').slice(0,100)}</td>`).join('') + '</tr>'
+  ).join('');
+}
+
+// ── LOG ───────────────────────────────────────────────────────
+function alog(msg, color) {
+  const el = document.getElementById('analisis-log');
+  el.style.display = 'block';
+  el.innerHTML += (color ? `<span style="color:${color}">${msg}</span>` : msg) + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── ANALIZAR ──────────────────────────────────────────────────
+window.analizar = async function() {
+  const btn = document.getElementById('btn-analizar');
+  const logEl = document.getElementById('analisis-log');
+  btn.disabled = true;
+  logEl.style.display = 'block';
+  logEl.innerHTML = '';
+  document.getElementById('incid-main').style.display = 'none';
+  document.getElementById('btn-guardar').style.display = 'none';
+
+  try {
+    alog('🔐 Conectando con Microsoft Graph...');
+    _graphToken = await getToken();
+    alog('✅ Token OK\n', '#22c55e');
+
+    const desde  = new Date(document.getElementById('fecha-desde').value + 'T00:00:00');
+    const hasta  = new Date(document.getElementById('fecha-hasta').value + 'T23:59:59');
+    const dias   = Math.round((hasta - desde) / 86400000);
+    const desde2 = new Date(desde); desde2.setDate(desde2.getDate() - dias);
+
+    alog(`📅 Período: ${desde.toLocaleDateString('es-CL')} — ${hasta.toLocaleDateString('es-CL')}`);
+
+    alog('📥 Descargando Excel de SharePoint...');
+    const resp = await fetch(`https://graph.microsoft.com/v1.0/drives/${DRIVE_ID}/items/${ITEM_ID}/content`,
+      { headers: { Authorization: 'Bearer ' + _graphToken } });
+    if (!resp.ok) throw new Error(`Error ${resp.status}: ${resp.statusText}`);
+    const buf = await resp.arrayBuffer();
+    alog(`✅ Excel descargado (${Math.round(buf.byteLength/1024)} KB)\n`, '#22c55e');
+
+    alog('📊 Leyendo hojas...');
+    const wb = XLSX.read(buf, { type: 'array', cellDates: true });
+    alog('  Hojas: ' + wb.SheetNames.join(', '));
+
+    function leer(nombre, skip) {
+      const ws = wb.Sheets[nombre];
+      if (!ws) { alog(`  ⚠️ "${nombre}" no encontrada`, '#f59e0b'); return []; }
+      let rows = XLSX.utils.sheet_to_json(ws, { defval: '', cellDates: true, range: skip||0 });
+      rows = rows.map(r => { const nr={}; Object.keys(r).forEach(k=>{nr[k.trim()]=r[k];}); return nr; });
+      alog(`  ✅ ${nombre}: ${rows.length} filas`);
+      return rows;
+    }
+
+    const opAll     = leer('Incidencias Operacionales');
+    const trazAll   = leer('Incidencias Trazabilidad');
+    const retAll    = leer('Incidencias Retiro', 2);
+    const comAll    = leer('Incidencias Comercial');
+
+    function filtrar(rows, col, d1, d2) {
+      return rows.filter(r => { const d = pDate(r[col]); return d && d >= d1 && d <= d2; });
+    }
+
+    const opA  = filtrar(opAll,  'Fecha', desde, hasta);
+    const opB  = filtrar(opAll,  'Fecha', desde2, desde);
+    const trA  = filtrar(trazAll,'Fecha', desde, hasta);
+    const trB  = filtrar(trazAll,'Fecha', desde2, desde);
+    const reA  = filtrar(retAll, 'FECHA', desde, hasta);
+    const reB  = filtrar(retAll, 'FECHA', desde2, desde);
+    const coA  = filtrar(comAll, 'Fecha', desde, hasta);
+    const coB  = filtrar(comAll, 'Fecha', desde2, desde);
+
+    alog(`\n📊 Resultados: Op:${opA.length} Traz:${trA.length} Retiro:${reA.length} Com:${coA.length}`, '#22c55e');
+
+    DATA = { opA, opB, trA, trB, reA, reB, coA, coB, desde, hasta, dias };
+
+    // ── RENDER DASHBOARD ────────────────────────────────────
+    const kpis = [
+      { label:'Operacionales', val:opA.length, ant:opB.length, bg:'#003366' },
+      { label:'Trazabilidad',  val:trA.length, ant:trB.length, bg:'#1a5276' },
+      { label:'Retiro',        val:reA.length, ant:reB.length, bg:'#1a6e3c' },
+      { label:'Comercial',     val:coA.length, ant:coB.length, bg:'#7d3c98' },
+    ];
+    document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
+      <div class="kpi-card" style="background:${k.bg}20;border:1px solid ${k.bg}60;color:#fff">
+        <div class="kpi-label" style="color:#ccc">${k.label}</div>
+        <div class="kpi-value">${k.val}</div>
+        <div class="kpi-delta" style="font-size:11px;opacity:.8">${flecha(k.val,k.ant)}</div>
+      </div>`).join('');
+
+    setTimeout(() => {
+      mkDonut('chart-donut',
+        ['Operacionales','Trazabilidad','Retiro','Comercial'],
+        [opA.length, trA.length, reA.length, coA.length]);
+
+      mkGroupedBar('chart-compare',
+        ['Operacionales','Trazabilidad','Retiro','Comercial'],
+        [
+          { label: 'Este período', data: [opA.length, trA.length, reA.length, coA.length], backgroundColor: '#3b82f6', borderRadius: 4 },
+          { label: 'Período anterior', data: [opB.length, trB.length, reB.length, coB.length], backgroundColor: '#374151', borderRadius: 4 }
+        ]);
+
+      // Operaciones
+      const opTipo = top5(count(opA,'Tipo de Incidencia'));
+      const opResp = top5(count(opA,'Responsable'));
+      const opCli  = top5(count(opA,'Cliente'));
+      mkBar('chart-op-tipo', opTipo.map(x=>x[0]), opTipo.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-op-resp', opResp.map(x=>x[0]), opResp.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-op-cli',  opCli.map(x=>x[0]),  opCli.map(x=>x[1]),  'Incidencias');
+
+      // Trazabilidad
+      const trEst  = top5(count(trA,'Estado'));
+      const trRes  = top5(count(trA,'Resolución'));
+      mkBar('chart-traz-estado', trEst.map(x=>x[0]), trEst.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-traz-resol',  trRes.map(x=>x[0]), trRes.map(x=>x[1]), 'Incidencias');
+
+      // Retiro
+      const reResp = top5(count(reA,'RESPONSABLE'));
+      const reCond = top5(count(reA,'CONDUCTOR'));
+      const reCli  = top5(count(reA,'CLIENTE'));
+      mkBar('chart-ret-resp', reResp.map(x=>x[0]), reResp.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-ret-cond', reCond.map(x=>x[0]), reCond.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-ret-cli',  reCli.map(x=>x[0]),  reCli.map(x=>x[1]),  'Incidencias');
+
+      // Comercial
+      const coArea = top5(count(coA,'Área'));
+      const coTipo = top5(count(coA,'Tipo de incidencia'));
+      mkBar('chart-com-area', coArea.map(x=>x[0]), coArea.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-com-tipo', coTipo.map(x=>x[0]), coTipo.map(x=>x[1]), 'Incidencias');
+    }, 100);
+
+    // Tablas detalle
+    renderTabla('tbody-op',   opA, ['Fecha','Tipo de Incidencia','Cliente','Responsable'], 'op-count');
+    renderTabla('tbody-traz', trA, ['Fecha','Clientes','Estado','Observaciones'], 'traz-count');
+    renderTabla('tbody-ret',  reA, ['FECHA','CLIENTE','CONDUCTOR','RESPONSABLE','SITUACIÓN ESPECIFÍCA'], 'ret-count');
+    renderTabla('tbody-com',  coA, ['Fecha','Área','Tipo de incidencia','Responsable','Detalle'], 'com-count');
+
+    document.getElementById('incid-main').style.display = 'block';
+    document.getElementById('btn-guardar').style.display = '';
+    document.getElementById('estado-analisis').textContent = `✅ ${opA.length+trA.length+reA.length+coA.length} incidencias analizadas`;
+    logEl.style.display = 'none';
+
+  } catch(e) {
+    alog('❌ Error: ' + e.message, '#ef4444');
+    console.error(e);
+  }
+  btn.disabled = false;
+};
+
+// ── GUARDAR SNAPSHOT ──────────────────────────────────────────
+window.guardarSnapshot = async function() {
+  if (!DATA) return;
+  const { opA, trA, reA, coA, desde, hasta } = DATA;
+
+  function top5obj(arr, col) {
+    return top5(count(arr, col)).map(([n,c]) => ({nombre:n, total:c}));
+  }
+
+  const snap = {
+    periodo_desde: desde.toISOString().slice(0,10),
+    periodo_hasta: hasta.toISOString().slice(0,10),
+    guardado_por: _userEmail,
+    guardado_fecha: new Date().toISOString(),
+    totales: { op: opA.length, traz: trA.length, retiro: reA.length, com: coA.length, total: opA.length+trA.length+reA.length+coA.length },
+    top_tipo_op:    top5obj(opA, 'Tipo de Incidencia'),
+    top_resp_op:    top5obj(opA, 'Responsable'),
+    top_cli_op:     top5obj(opA, 'Cliente'),
+    top_est_traz:   top5obj(trA, 'Estado'),
+    top_resp_ret:   top5obj(reA, 'RESPONSABLE'),
+    top_cond_ret:   top5obj(reA, 'CONDUCTOR'),
+    top_cli_ret:    top5obj(reA, 'CLIENTE'),
+    top_area_com:   top5obj(coA, 'Área'),
+    top_tipo_com:   top5obj(coA, 'Tipo de incidencia'),
+  };
+
+  try {
+    const { doc, setDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const id = hasta.toISOString().slice(0,10);
+    await setDoc(doc(db, 'incidencias_historial', id), snap);
+    document.getElementById('estado-analisis').textContent = '✅ Snapshot guardado — ' + id;
+    alert('✅ Snapshot guardado en historial.');
+  } catch(e) {
+    alert('❌ Error al guardar: ' + e.message);
+  }
+};
+
+// ── ENVIAR CORREO ─────────────────────────────────────────────
+window.enviarCorreo = async function() {
+  if (!DATA) { alert('Primero analiza los datos.'); return; }
+  const { opA, opB, trA, trB, reA, reB, coA, coB, desde, hasta } = DATA;
+  const btn = document.getElementById('btn-enviar');
+  const log = document.getElementById('enviar-log');
+  btn.disabled = true; log.style.display = 'block'; log.innerHTML = '';
+
+  function elog(m,c) { log.innerHTML += (c?`<span style="color:${c}">${m}</span>`:m)+'\n'; log.scrollTop=log.scrollHeight; }
+
+  try {
+    const comentario = document.getElementById('comentario').value.trim();
+    const remitente  = document.getElementById('nombre-remitente').value.trim() || 'Janis Díaz';
+    const periodoStr = `${desde.toLocaleDateString('es-CL')} al ${hasta.toLocaleDateString('es-CL')}`;
+    const hoyStr     = hasta.toLocaleDateString('es-CL');
+
+    function rankHTML(arr, titulo) {
+      if (!arr.length) return '';
+      const filas = arr.map(([k,v],i)=>`<tr><td>${i+1}°</td><td>${k}</td><td><strong>${v}</strong></td></tr>`).join('');
+      return `<h4 style="color:#555;margin:10px 0 5px">${titulo}</h4>
+        <table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;font-size:12px;font-family:Arial">
+          <tr style="background:#eef2ff"><th>#</th><th>Nombre</th><th>Incidencias</th></tr>${filas}</table>`;
+    }
+    function tablaHTML(rows, cols, heads) {
+      if (!rows.length) return '<p style="color:#888">Sin registros en el período.</p>';
+      const ths = heads.map(h=>`<th>${h}</th>`).join('');
+      const filas = rows.map(r=>'<tr>'+cols.map(c=>{let v=r[c];if(v instanceof Date)v=v.toLocaleDateString('es-CL');return`<td>${String(v||'-').slice(0,80)}</td>`;}).join('')+'</tr>').join('');
+      return `<table border="1" cellpadding="5" cellspacing="0" style="border-collapse:collapse;font-family:Arial;font-size:11px;width:100%"><tr style="background:#003366;color:white">${ths}</tr>${filas}</table>`;
+    }
+    function fl(a,b){if(b===0)return'🆕';const d=a-b;return d>0?`🔺 +${d} vs semana anterior`:d<0?`🟢 ${d} vs semana anterior`:'➡️ igual que semana anterior';}
+
+    const html = `<div style="font-family:Arial;max-width:800px;margin:auto">
+<h2 style="color:#003366;border-bottom:2px solid #003366;padding-bottom:8px">📦 Reporte Semanal de Incidencias — Recíbelo</h2>
+<p style="color:#555">Período: <strong>${periodoStr}</strong></p>
+${comentario?`<div style="background:#fef9e7;border-left:4px solid #f39c12;padding:12px 16px;margin:15px 0;border-radius:4px">
+  <p style="margin:0 0 4px;font-size:11px;color:#888;font-weight:bold">COMENTARIO DE ${remitente.toUpperCase()}</p>
+  <p style="margin:0;font-size:13px">${comentario}</p></div>`:''}
+<table style="width:100%;margin:15px 0;border-collapse:collapse"><tr>
+  <td style="background:#003366;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${opA.length}</div><div>Operacionales</div><div style="font-size:11px;margin-top:4px">${fl(opA.length,opB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#1a5276;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${trA.length}</div><div>Trazabilidad</div><div style="font-size:11px;margin-top:4px">${fl(trA.length,trB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#1a6e3c;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${reA.length}</div><div>Retiro</div><div style="font-size:11px;margin-top:4px">${fl(reA.length,reB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#7d3c98;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${coA.length}</div><div>Comercial</div><div style="font-size:11px;margin-top:4px">${fl(coA.length,coB.length)}</div></td>
+</tr></table>
+<h3 style="color:#003366;margin-top:25px">🔧 Incidencias Operacionales</h3>
+${rankHTML(top5(count(opA,'Tipo de Incidencia')),'📊 Por tipo')}${rankHTML(top5(count(opA,'Responsable')),'👤 Por responsable')}${rankHTML(top5(count(opA,'Cliente')),'🏢 Por cliente')}
+<br>${tablaHTML(opA,['Fecha','Tipo de Incidencia','Cliente','Responsable'],['Fecha','Tipo','Cliente','Responsable'])}
+<h3 style="color:#003366;margin-top:25px">📍 Incidencias Trazabilidad</h3>
+${rankHTML(top5(count(trA,'Estado')),'📊 Por estado')}${rankHTML(top5(count(trA,'Resolución')),'🔄 Por resolución')}
+<br>${tablaHTML(trA,['Fecha','Clientes','Estado','Observaciones'],['Fecha','Cliente','Estado','Observaciones'])}
+<h3 style="color:#003366;margin-top:25px">🚚 Incidencias Retiro</h3>
+${rankHTML(top5(count(reA,'RESPONSABLE')),'👤 Por responsable')}${rankHTML(top5(count(reA,'CONDUCTOR')),'🚛 Por conductor')}${rankHTML(top5(count(reA,'CLIENTE')),'🏢 Por cliente')}
+<br>${tablaHTML(reA,['FECHA','CLIENTE','CONDUCTOR','RESPONSABLE','SITUACIÓN ESPECIFÍCA'],['Fecha','Cliente','Conductor','Responsable','Situación'])}
+<h3 style="color:#003366;margin-top:25px">💼 Incidencias Comercial</h3>
+${rankHTML(top5(count(coA,'Área')),'📂 Por área')}${rankHTML(top5(count(coA,'Tipo de incidencia')),'📊 Por tipo')}
+<br>${tablaHTML(coA,['Fecha','Área','Tipo de incidencia','Responsable','Detalle'],['Fecha','Área','Tipo','Responsable','Detalle'])}
+<hr style="margin-top:30px;border:none;border-top:1px solid #ddd">
+<p style="color:#aaa;font-size:10px">Generado automáticamente · Libro de Incidencias 2026 · Recíbelo · ${hoyStr}</p></div>`;
+
+    elog('📧 Enviando correo...');
+    if (!_graphToken) _graphToken = await getToken();
+    const sr = await fetch('https://graph.microsoft.com/v1.0/me/sendMail', {
+      method: 'POST',
+      headers: { Authorization: 'Bearer '+_graphToken, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message: {
+        subject: `📦 Incidencias Semanales Recíbelo — ${hoyStr}`,
+        body: { contentType: 'HTML', content: html },
+        toRecipients: [
+          {emailAddress:{address:'jballesteros@recibelo.cl'}},{emailAddress:{address:'gherrera@recibelo.cl'}},
+          {emailAddress:{address:'mrivera@recibelo.cl'}},{emailAddress:{address:'jvasquez@recibelo.cl'}},
+          {emailAddress:{address:'cvergara@recibelo.cl'}},{emailAddress:{address:'mcoll@recibelo.cl'}},
+          {emailAddress:{address:'bconcha@recibelo.cl'}},{emailAddress:{address:'eac@recibelo.cl'}},
+          {emailAddress:{address:'wii.nni@gmail.com'}}
+        ]
+      }})
+    });
+    if (!sr.ok) { const e=await sr.json(); throw new Error(e.error?.message||JSON.stringify(e)); }
+    elog('✅ Correo enviado correctamente', '#22c55e');
+  } catch(e) { elog('❌ Error: '+e.message, '#ef4444'); }
+  btn.disabled = false;
+};
+
+// ── HISTORIAL ─────────────────────────────────────────────────
+let _histLoaded = false;
+window.loadHistorial = async function() {
+  if (_histLoaded) return;
+  _histLoaded = true;
+  try {
+    const { collection, getDocs, orderBy, query } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const snap = await getDocs(query(collection(db,'incidencias_historial'), orderBy('periodo_hasta','desc')));
+    HISTORIAL = snap.docs.map(d => d.data());
+    const meses = [...new Set(HISTORIAL.map(h=>h.periodo_hasta.slice(0,7)))].sort().reverse();
+    const sel = document.getElementById('hist-mes');
+    sel.innerHTML = '<option value="">Todos los períodos</option>';
+    meses.forEach(m => { const [y,mo]=m.split('-'); const l=new Date(y,mo-1,1).toLocaleString('es-CL',{month:'long',year:'numeric'}); sel.innerHTML+=`<option value="${m}">${l.charAt(0).toUpperCase()+l.slice(1)}</option>`; });
+    renderHistorial();
+  } catch(e) { document.getElementById('tbody-hist').innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted2)">Error: ${e.message}</td></tr>`; }
+};
+
+window.renderHistorial = function() {
+  const filtro = document.getElementById('hist-mes').value;
+  const rows = filtro ? HISTORIAL.filter(h=>h.periodo_hasta.startsWith(filtro)) : HISTORIAL;
+  if (!rows.length) { document.getElementById('tbody-hist').innerHTML='<tr><td colspan="7"><div class="empty-state">Sin registros</div></td></tr>'; return; }
+
+  const totalPeriodos = rows.length;
+  const promTotal = Math.round(rows.reduce((s,h)=>s+h.totales.total,0)/totalPeriodos);
+  document.getElementById('hist-resumen').textContent = `${totalPeriodos} período(s) · promedio ${promTotal} incidencias/semana`;
+
+  document.getElementById('tbody-hist').innerHTML = rows.map(h => `<tr>
+    <td style="white-space:nowrap;font-weight:600">${h.periodo_desde} → ${h.periodo_hasta}</td>
+    <td style="text-align:right;color:#3b82f6">${h.totales.op}</td>
+    <td style="text-align:right;color:#1a5276">${h.totales.traz}</td>
+    <td style="text-align:right;color:#22c55e">${h.totales.retiro}</td>
+    <td style="text-align:right;color:#a855f7">${h.totales.com}</td>
+    <td style="text-align:right;font-weight:700">${h.totales.total}</td>
+    <td style="color:var(--muted2);font-size:11px">${h.guardado_por||'—'}</td>
+  </tr>`).join('');
+
+  // Gráfico tendencia
+  const labels  = [...rows].reverse().map(h=>h.periodo_hasta.slice(5));
+  const ds = [
+    { label:'Operacionales', data:[...rows].reverse().map(h=>h.totales.op),     borderColor:'#3b82f6', tension:.4, fill:false },
+    { label:'Trazabilidad',  data:[...rows].reverse().map(h=>h.totales.traz),   borderColor:'#1a5276', tension:.4, fill:false },
+    { label:'Retiro',        data:[...rows].reverse().map(h=>h.totales.retiro), borderColor:'#22c55e', tension:.4, fill:false },
+    { label:'Comercial',     data:[...rows].reverse().map(h=>h.totales.com),    borderColor:'#a855f7', tension:.4, fill:false },
+  ];
+  setTimeout(()=>mkLine('chart-tendencia', labels, ds), 100);
+};
+</script>
+</body>
+</html>
