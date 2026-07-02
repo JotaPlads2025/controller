@@ -2,6 +2,66 @@
 > Este archivo es leído automáticamente por Cowork al conectar esta carpeta.
 > Mantenerlo actualizado cada vez que haya cambios estructurales relevantes.
 
+## Archivos de conocimiento (memory/)
+
+| Archivo | Descripción |
+|---|---|
+| `memory/miper-recibelo.json` | MIPER completo: 77 riesgos, 6 áreas, VEP calculados, medidas preventivas, requisitos legales. Base: DS 44/2024 + Guía ISP v3. Consultar para preguntas sobre prevención de riesgos, puestos expuestos, medidas por cargo. |
+
+## Estándar de módulos — LEER ANTES DE CREAR O EDITAR CUALQUIER MÓDULO
+
+Plantilla oficial: `public/MODULO_TEMPLATE.html` — copiar siempre desde ahí.
+
+### Layout obligatorio (todos los módulos)
+
+```
+body (display:flex)
+└── #app (display:flex; flex-direction:column)   ← JS: style.display='flex' al autenticar
+    ├── <header>                                  ← ANCHO COMPLETO (56px height)
+    │   ├── izq: logo recibelo.cl2.png + badge-module
+    │   └── der: info contextual + user-chip (avatar + nombre + "salir")
+    └── .app-shell (display:flex; flex:1)
+        ├── <nav class="sidebar">                 ← NUNCA position:fixed
+        │   ├── div.nav-section "Módulos"
+        │   └── a.nav-item × módulo (id="nav-X" style="display:none" — setupAuth los muestra)
+        │       (item activo: sin id, class="nav-item active", siempre visible)
+        └── <main class="main-content">           ← flex:1, overflow-y:auto
+```
+
+### Reglas críticas
+
+| Regla | Bien ✅ | Mal ❌ |
+|---|---|---|
+| Sidebar | `flex-shrink:0` dentro de `.app-shell` | `position:fixed` |
+| User info | En `<header>` con `id="user-avatar"` y `id="user-name"` | En sidebar-footer |
+| Logout | `onclick="doSignOut()"` (de setupAuth) | `onclick="cerrarSesion()"` propio |
+| Auth | `setupAuth({ modulo, onReady })` de `/shared/auth.js` | Firebase manual duplicado |
+| Colores | Variables CSS de `:root` (ver template) | Colores hardcodeados |
+| Módulo activo en sidebar | `<a href="/X" class="nav-item active">` sin id | Con `style="display:none"` |
+| Mostrar #app | `document.getElementById('app').style.display = 'flex'` | Cambiar flex-direction por separado |
+
+### CSS variables estándar (`:root`)
+
+```css
+--bg:#0f1117  --card:#1a1d27  --card2:#20243a  --border:#2a2d3e
+--text:#e8eaf0  --muted:#6b7280  --muted2:#4b5563
+--azul:#3b82f6  --verde:#22c55e  --rojo:#ef4444  --amarillo:#f59e0b
+--orange:#FF6B35  --violeta:#8b5cf6
+```
+
+### Estado de normalización por módulo
+
+| Módulo | Layout | Auth | Notas |
+|---|---|---|---|
+| `/sla` | ✅ Template | ✅ setupAuth | Referencia más limpia |
+| `/retiros` | ✅ Template | ⚠️ Auth propio (MSAL) | MSAL necesario para SharePoint |
+| `/operacional` | ⚠️ Sidebar fixed | ✅ setupAuth | Pendiente normalizar sidebar |
+| `/finanzas` | ⚠️ Sidebar fixed | ✅ setupAuth | Pendiente normalizar sidebar |
+| `/asistencia_ruta` | ✅ Template | ✅ setupAuth | OK |
+| `/` (controller) | ⚠️ Auth emails[] plano | ⚠️ Auth propio | Migración pendiente (ver próxima sesión) |
+
+---
+
 ## Qué es este proyecto
 
 Plataforma modular interna de Recíbelo, construida sobre Firebase. Cuatro módulos activos.
@@ -147,8 +207,19 @@ Campos: codigo, nombre, responsable, estado
 Campos: codigo, nombre, area_id, area_nombre, responsable, nivel_madurez (int 1-4), nivel_label, tipo, version, archivo_md, subcarpeta, ubicacion_doc, tamano_kb, fecha_modificacion, estado, observaciones
 
 ### `/colaboradores/{colaboradorId}`
-IDs: `COL001` a `COL064`
+IDs: `COL001` a `COL069`
 Campos: nombre, apellido_p, apellido_m, nombre_completo, cargo, funcion_1, funcion_2, funcion_3, funciones (array)
+
+**Columna H "Activo"** (Excel Maestro únicamente — no en Firestore): `Si` / `No`. Indica si el colaborador sigue activo en Recíbelo. No se borran registros inactivos para mantener historial.
+
+**Colaboradores nuevos (jun 2026):**
+| ID | Nombre | Cargo | Función |
+|---|---|---|---|
+| COL065 | Bryan Lucas Aravena Figueroa | ASISTENTE COMERCIAL | Control de KPIs comercial y prospección |
+| COL066 | Flabio Alexander Diaz Peñailillo | PICKER SUPERVISOR | Picker |
+| COL067 | Leyla Isis Padilla Silva | AUXILIAR DE ASEO | Limpieza y orden |
+| COL068 | Manuel Alejandro Quezada Salazar | ENCARGADO DE RESGUARDO OPERACIONAL, SEGURIDAD Y CONTINUIDAD | Seguridad, operaciones, infraestructura, mantenimiento |
+| COL069 | Sebastián Eduardo Aguirre Alvarez | PICKER SUPERVISOR | Picker |
 
 ### `/funciones/{funcionId}`
 IDs: `F001` a `F036`
@@ -286,6 +357,9 @@ service cloud.firestore {
     match /fin_feriados/{doc}         { allow write: if request.auth != null; }
     match /fin_conductores/{doc}      { allow write: if request.auth != null; }
     match /historial_ruta/{doc}       { allow write: if request.auth != null; }
+    match /growth_snapshots/{doc}     { allow write: if request.auth != null; }
+    match /growth_data/{doc}          { allow write: if request.auth != null; }
+    match /growth_notas/{doc}         { allow write: if request.auth != null; }
   }
 }
 ```
@@ -320,7 +394,7 @@ cp "dashboard_procesos.html" "public/index.html"
 ## Estado del proyecto (mayo 2026)
 
 - [x] Firebase proyecto creado (`proyectos-ctrl`)
-- [x] Firestore poblado (33 procesos, 9 areas, 36 funciones, 64 colaboradores)
+- [x] Firestore poblado (38 procesos, 9 areas, 36 funciones, 69 colaboradores en Excel — Firestore aún en 64, pendiente sync)
 - [x] Dashboard Controller publicado en https://proyectos-ctrl.web.app
 - [x] Autenticacion Microsoft + Google implementada
 - [x] Control de acceso via `/config/acceso` con estructura de roles por modulo
@@ -348,6 +422,7 @@ cp "dashboard_procesos.html" "public/index.html"
 - [x] Módulo compartido `public/shared/auth.js` — auth, nk, fmt, safeId, setupAuth()
 - [x] Widget clima Open-Meteo (7 días, Santiago) — inyectado automáticamente en todos los módulos via shared/auth.js
 - [x] Módulo `/sla` — SLA CX: merge ingreso+egreso, clasificación automática, revisión manual, export Excel
+- [x] Módulo `/growth` — Seguimiento de clientes: tiers, canales, notas, historial mensual
 - [ ] Campo `ubicacion_doc` (SharePoint links) por completar en procesos
 - [ ] Coleccion `/historial` (Controller) por implementar
 - [x] Reembolsos: confirmado con Finanzas → son informativos (no descuentan, van con nota de crédito)

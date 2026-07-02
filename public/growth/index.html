@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Growth · Recíbelo</title>
+<style>
+:root{
+  --bg:#0f1117;--card:#1a1d27;--card2:#20243a;--border:#2a2d3e;
+  --text:#e8eaf0;--muted:#6b7280;--muted2:#4b5563;
+  --azul:#3b82f6;--verde:#22c55e;--rojo:#ef4444;--amarillo:#f59e0b;
+  --orange:#FF6B35;--violeta:#8b5cf6;--cyan:#06b6d4;
+  --ts:#f59e0b;--t1:#3b82f6;--t2:#8b5cf6;--t3:#22c55e;--t4:#6b7280;--ti:#ef4444;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;display:flex}
+
+/* ── LOGIN ── */
+#login-screen{display:flex;align-items:center;justify-content:center;flex:1;background:var(--bg)}
+.login-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:40px;width:340px;text-align:center}
+.login-box img{height:32px;margin-bottom:20px}
+.login-box h2{font-size:17px;font-weight:700;margin-bottom:4px}
+.login-box p{font-size:12px;color:var(--muted);margin-bottom:24px}
+.btn-lg{width:100%;padding:11px;border-radius:8px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:8px;transition:background .15s}
+.btn-lg:hover{background:#2a2d3e}
+.btn-lg svg{width:18px;height:18px;flex-shrink:0}
+#login-error{margin-top:12px;font-size:12px;color:var(--rojo);min-height:16px}
+
+/* ── APP ── */
+#app{display:none;flex-direction:column;flex:1}
+header{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.hdr-l{display:flex;align-items:center;gap:10px}
+.hdr-l img{height:26px}
+.badge-mod{background:var(--verde);color:#fff;font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px}
+.user-chip{display:flex;align-items:center;gap:8px;cursor:pointer;padding:5px 10px;border-radius:8px;border:1px solid var(--border);font-size:12px;transition:background .15s}
+.user-chip:hover{background:var(--card2)}
+.uavatar{width:26px;height:26px;border-radius:50%;background:var(--verde);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#fff}
+.app-shell{display:flex;flex:1;overflow:hidden}
+
+/* ── SIDEBAR ── */
+.sidebar{width:200px;min-width:200px;background:var(--card);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;flex-shrink:0}
+.nav-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;padding:12px 20px 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 20px;font-size:13px;font-weight:600;color:var(--muted2);text-decoration:none;border-left:3px solid transparent;transition:all .15s}
+.nav-item:hover{background:rgba(255,255,255,.04);color:var(--text)}
+.nav-item.active{color:var(--text);border-left-color:var(--verde);background:rgba(34,197,94,.08)}
+
+/* ── MAIN ── */
+.main-content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.topbar{display:flex;align-items:center;gap:10px;padding:10px 20px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0;flex-wrap:wrap}
+.tabs{display:flex;gap:2px;background:var(--card2);border-radius:8px;padding:3px}
+.tab-btn{padding:6px 14px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:none;background:transparent;color:var(--muted);transition:all .15s}
+.tab-btn.active{background:var(--card);color:var(--text)}
+.periodo-badge{font-size:11px;font-weight:600;padding:5px 10px;border-radius:6px;background:var(--card2);border:1px solid var(--border);color:var(--muted)}
+.periodo-badge span{color:var(--verde);margin-left:4px}
+.upload-group{display:flex;gap:6px;margin-left:auto}
+.btn-up{padding:7px 12px;border-radius:8px;font-size:11px;font-weight:700;cursor:pointer;border:none;display:flex;align-items:center;gap:5px;transition:opacity .15s}
+.btn-up:hover{opacity:.85}
+.btn-up.primary{background:var(--verde);color:#fff}
+.btn-up.secondary{background:var(--card2);color:var(--text);border:1px solid var(--border)}
+.upload-input{display:none}
+
+/* ── VIEWS ── */
+.view{display:none;padding:20px;overflow-y:auto;flex:1}
+.view.active{display:block}
+
+/* ── KPI ── */
+.kpi-row{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.kpi-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;border-top:3px solid var(--accent,var(--verde))}
+.kpi-val{font-size:26px;font-weight:800;margin-bottom:2px}
+.kpi-lbl{font-size:10px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em}
+.kpi-sub{font-size:11px;color:var(--muted2);margin-top:3px}
+
+/* ── BARS ── */
+.bars-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:20px}
+.bar-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.bar-card-title{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:7px;font-size:12px}
+.bar-row:last-child{margin-bottom:0}
+.bar-label{min-width:90px;color:var(--muted);font-weight:500;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-track{flex:1;height:7px;background:var(--card2);border-radius:99px;overflow:hidden}
+.bar-fill{height:100%;border-radius:99px;transition:width .5s}
+.bar-val{min-width:36px;text-align:right;font-weight:700;font-size:11px}
+
+/* ── FILTER BAR ── */
+.filter-bar{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;align-items:center}
+.filter-bar input,.filter-bar select{padding:7px 10px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:12px;outline:none}
+.filter-bar input{min-width:180px}
+.filter-bar select{cursor:pointer}
+.count-badge{font-size:11px;color:var(--muted);margin-left:auto}
+
+/* ── TABLE ── */
+.tbl-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+thead th{background:var(--card2);padding:8px 10px;text-align:left;font-weight:700;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);white-space:nowrap;position:sticky;top:0}
+tbody tr{border-bottom:1px solid var(--border);cursor:pointer;transition:background .1s}
+tbody tr:hover{background:rgba(255,255,255,.03)}
+tbody tr.selected{background:rgba(34,197,94,.06)}
+tbody tr.blindaje-row{border-left:3px solid var(--amarillo)}
+td{padding:7px 10px;white-space:nowrap}
+td.nm{font-weight:600;max-width:150px;overflow:hidden;text-overflow:ellipsis}
+
+/* ── TIER CHIPS ── */
+.tier-chip{display:inline-flex;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:700}
+.tier-S{background:rgba(245,158,11,.15);color:#f59e0b}
+.tier-1{background:rgba(59,130,246,.15);color:#3b82f6}
+.tier-2{background:rgba(139,92,246,.15);color:#8b5cf6}
+.tier-3{background:rgba(34,197,94,.15);color:#22c55e}
+.tier-4{background:rgba(107,114,128,.15);color:#9ca3af}
+.tier-I{background:rgba(239,68,68,.1);color:#ef4444}
+.tasa-good{color:var(--verde)}
+.tasa-warn{color:var(--amarillo)}
+.tasa-bad{color:var(--rojo)}
+
+/* ── TAG BADGES ── */
+.badge{display:inline-flex;align-items:center;padding:1px 6px;border-radius:20px;font-size:10px;font-weight:700;white-space:nowrap}
+.badge-fd{background:rgba(34,197,94,.15);color:#22c55e}
+.badge-rpl{background:rgba(239,68,68,.12);color:#ef4444}
+.badge-blindaje{background:rgba(245,158,11,.15);color:#f59e0b}
+.size-chip{display:inline-block;padding:1px 5px;border-radius:4px;font-size:9px;font-weight:700;background:rgba(139,92,246,.12);color:#a78bfa;margin:1px}
+.plat-chip{display:inline-block;padding:1px 6px;border-radius:4px;font-size:10px;font-weight:600;background:var(--card2);color:var(--muted);border:1px solid var(--border)}
+
+/* ── LAYOUT CLIENTES ── */
+.clientes-layout{display:flex;gap:14px;overflow:hidden;flex:1}
+.table-section{flex:1;overflow:auto;min-width:0}
+.detail-panel{width:320px;flex-shrink:0;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:18px;overflow-y:auto;display:none;flex-direction:column;gap:12px}
+.detail-panel.open{display:flex}
+.dp-name{font-size:15px;font-weight:800}
+.dp-sub{font-size:12px;color:var(--muted);margin-top:2px;display:flex;flex-wrap:wrap;gap:4px;align-items:center}
+.dp-sec{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:var(--muted);margin-bottom:6px}
+.dp-metrics{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dp-metric{background:var(--card2);border-radius:8px;padding:9px 10px}
+.dp-metric-val{font-size:17px;font-weight:800}
+.dp-metric-lbl{font-size:10px;color:var(--muted)}
+.dp-channels{display:flex;flex-direction:column;gap:5px}
+.ch-row{display:flex;align-items:center;gap:6px;font-size:12px}
+.ch-dot{display:inline-block;width:7px;height:7px;border-radius:50%;flex-shrink:0}
+.ch-name{min-width:70px;color:var(--muted);font-size:11px}
+.ch-nums{font-weight:600}
+.ch-tasa{font-size:11px;margin-left:auto}
+.ch-empty{color:var(--muted2);font-size:11px;font-style:italic;padding:4px 0}
+.blindaje-alert{background:rgba(245,158,11,.1);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:8px 12px;font-size:12px;display:flex;align-items:center;gap:8px;color:var(--amarillo);font-weight:700}
+.dp-textarea{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:9px;resize:vertical;min-height:75px;font-family:inherit;outline:none}
+.dp-textarea:focus{border-color:var(--verde)}
+.dp-input{width:100%;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:12px;padding:7px 9px;font-family:inherit;outline:none}
+.dp-input:focus{border-color:var(--verde)}
+.dp-input::placeholder,.dp-textarea::placeholder{color:var(--muted)}
+.btn-save{width:100%;padding:9px;border-radius:8px;background:var(--verde);color:#fff;font-size:13px;font-weight:700;border:none;cursor:pointer;transition:opacity .15s}
+.btn-save:hover{opacity:.85}
+.btn-save.saved{background:var(--card2);color:var(--muted)}
+
+/* ── HISTORIAL ── */
+.hist-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;margin-bottom:20px}
+.hist-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px;cursor:pointer;transition:border-color .15s}
+.hist-card:hover,.hist-card.hc-active{border-color:var(--verde)}
+.hist-periodo{font-size:14px;font-weight:800}
+.hist-meta{font-size:11px;color:var(--muted);margin-top:3px}
+.hist-kpis{display:flex;gap:12px;margin-top:8px}
+.hkpi strong{color:var(--text);font-size:13px;display:block}
+.hkpi{font-size:10px;color:var(--muted2)}
+.comp-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.comp-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px}
+.comp-title{font-size:11px;font-weight:700;color:var(--muted);margin-bottom:10px;text-transform:uppercase;letter-spacing:.05em}
+.comp-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px solid var(--border);font-size:12px}
+.comp-row:last-child{border-bottom:none}
+.delta-pos{color:var(--verde)}
+.delta-neg{color:var(--rojo)}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:60px 20px;color:var(--muted)}
+.empty-icon{font-size:36px;margin-bottom:10px}
+.empty-title{font-size:14px;font-weight:700;margin-bottom:5px}
+.empty-sub{font-size:12px}
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="login-screen">
+  <div class="login-box">
+    <img src="/recibelo.cl2.png" alt="Recíbelo">
+    <h2>Growth</h2>
+    <p>Seguimiento de clientes · Canales · Tiers</p>
+    <button class="btn-lg" onclick="window.fbSignInMS&&window.fbSignInMS()">
+      <svg viewBox="0 0 21 21" fill="none"><rect width="10" height="10" fill="#F35325"/><rect x="11" width="10" height="10" fill="#81BC06"/><rect y="11" width="10" height="10" fill="#05A6F0"/><rect x="11" y="11" width="10" height="10" fill="#FFBA08"/></svg>
+      Entrar con cuenta Recíbelo
+    </button>
+    <button class="btn-lg" onclick="window.fbSignInGoogle&&window.fbSignInGoogle()">
+      <svg viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+      Entrar con Google
+    </button>
+    <div id="login-error"></div>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header>
+    <div class="hdr-l">
+      <img src="/recibelo.cl2.png" alt="Recíbelo">
+      <span class="badge-mod">GROWTH</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="user-chip" onclick="window.doSignOut&&window.doSignOut()">
+        <div class="uavatar" id="user-avatar">?</div>
+        <span id="user-name">—</span>
+        <span style="font-size:10px;color:var(--muted)">· salir</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="app-shell">
+    <nav class="sidebar"></nav>
+    <div class="main-content">
+
+      <!-- TOPBAR -->
+      <div class="topbar">
+        <div class="tabs">
+          <button class="tab-btn active" onclick="switchTab('dashboard')">📊 Dashboard</button>
+          <button class="tab-btn" onclick="switchTab('clientes')">👥 Clientes</button>
+          <button class="tab-btn" onclick="switchTab('historial')">📅 Historial</button>
+        </div>
+        <div class="periodo-badge">Período:<span id="periodo-lbl"> Sin datos</span></div>
+        <div class="upload-group">
+          <button class="btn-up secondary" onclick="document.getElementById('file-paquetes').click()" title="Paquetes del dashboard: enriquece canales, plataforma y tags">⬆ Detalle Paquetes</button>
+          <button class="btn-up primary" onclick="document.getElementById('file-resumen').click()" title="Excel resumen mensual (formato Bruno): carga tiers y volúmenes">⬆ Resumen Mensual</button>
+        </div>
+        <input type="file" id="file-resumen" class="upload-input" accept=".xlsx,.xls">
+        <input type="file" id="file-paquetes" class="upload-input" accept=".xlsx,.xls">
+      </div>
+
+      <!-- DASHBOARD -->
+      <div id="view-dashboard" class="view active">
+        <div id="dash-content">
+          <div class="empty">
+            <div class="empty-icon">📊</div>
+            <div class="empty-title">Sin datos cargados</div>
+            <div class="empty-sub">Sube el Resumen Mensual para comenzar · luego enriquece con Detalle Paquetes</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- CLIENTES -->
+      <div id="view-clientes" class="view" style="display:flex;flex-direction:column;padding:0;overflow:hidden">
+        <div style="padding:14px 20px 0">
+          <div class="filter-bar">
+            <input type="text" id="q-search" placeholder="🔍 Buscar cliente..." oninput="applyFilters()">
+            <select id="f-tier" onchange="applyFilters()">
+              <option value="">Todos los tiers</option>
+              <option>Tier S</option><option>Tier 1</option><option>Tier 2</option>
+              <option>Tier 3</option><option>Tier 4</option><option>INACTIVO</option>
+            </select>
+            <select id="f-canal" onchange="applyFilters()">
+              <option value="">Todos los canales</option>
+              <option value="ml">Mercado Libre</option>
+              <option value="ecomm">Ecommerce</option>
+              <option value="ripley">Ripley</option>
+              <option value="fala">Falabella (resumen)</option>
+              <option value="fd">Falabella Directo (tag)</option>
+              <option value="ripley_sd">Ripley Sameday (tag)</option>
+            </select>
+            <select id="f-plat" onchange="applyFilters()">
+              <option value="">Todas las plataformas</option>
+              <option>Jumpseller</option><option>Shopify</option>
+              <option>Woocommerce</option><option>Mercado Libre</option><option>sistema</option>
+            </select>
+            <select id="f-extra" onchange="applyFilters()">
+              <option value="">Sin filtro especial</option>
+              <option value="blindaje">🛡 Blin-daje</option>
+              <option value="xl">Mueve XL+</option>
+              <option value="3xl">Mueve 3XL+</option>
+            </select>
+            <span class="count-badge" id="count-lbl"></span>
+          </div>
+        </div>
+        <div class="clientes-layout" style="padding:0 20px 14px">
+          <div class="table-section">
+            <div class="tbl-wrap">
+              <table>
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>Cliente</th>
+                    <th>Plataforma</th>
+                    <th>Canales</th>
+                    <th>Total ✓</th>
+                    <th>Tasa%</th>
+                    <th>Tier</th>
+                    <th title="Blindaje">🛡</th>
+                  </tr>
+                </thead>
+                <tbody id="clientes-tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <!-- PANEL DETALLE -->
+          <div class="detail-panel" id="detail-panel">
+            <div>
+              <div class="dp-name" id="dp-nombre">—</div>
+              <div class="dp-sub" id="dp-sub"></div>
+            </div>
+            <div id="dp-blindaje-alert" style="display:none">
+              <div class="blindaje-alert">🛡 Cliente Blin-daje — proteger a toda costa</div>
+            </div>
+            <div>
+              <div class="dp-sec">Métricas del período</div>
+              <div class="dp-metrics" id="dp-metrics"></div>
+            </div>
+            <div id="dp-canales-sec">
+              <div class="dp-sec">Canales (resumen mensual)</div>
+              <div class="dp-channels" id="dp-channels"></div>
+            </div>
+            <div id="dp-tags-sec" style="display:none">
+              <div class="dp-sec">Canales especiales · Plataforma · Tamaños</div>
+              <div id="dp-tags-content" style="display:flex;flex-wrap:wrap;gap:4px;margin-top:2px"></div>
+            </div>
+            <div>
+              <div class="dp-sec">Oportunidad de canal</div>
+              <input class="dp-input" id="dp-oport" placeholder="Ej: Ofrecerle Falabella Directo · aún no tiene Ripley">
+            </div>
+            <div>
+              <div class="dp-sec">Notas</div>
+              <textarea class="dp-textarea" id="dp-notas" placeholder="Última llamada, alertas, contexto comercial..."></textarea>
+            </div>
+            <button class="btn-save" id="btn-save-nota" onclick="saveNota()">Guardar nota</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- HISTORIAL -->
+      <div id="view-historial" class="view">
+        <div id="hist-content">
+          <div class="empty">
+            <div class="empty-icon">📅</div>
+            <div class="empty-title">Sin historial aún</div>
+            <div class="empty-sub">Carga al menos un período para ver el historial</div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script type="module">
+import { setupAuth, auth, db, nk } from "/shared/auth.js";
+import {
+  collection, doc, getDocs, setDoc, writeBatch, query, where, orderBy
+} from "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js";
+
+// ── CONSTANTS ─────────────────────────────────────────────────────────────────
+const TIERS      = ['Tier S','Tier 1','Tier 2','Tier 3','Tier 4','INACTIVO'];
+const TIER_CLS   = {'Tier S':'tier-S','Tier 1':'tier-1','Tier 2':'tier-2','Tier 3':'tier-3','Tier 4':'tier-4','INACTIVO':'tier-I'};
+const TIER_COLOR = {'Tier S':'#f59e0b','Tier 1':'#3b82f6','Tier 2':'#8b5cf6','Tier 3':'#22c55e','Tier 4':'#6b7280','INACTIVO':'#ef4444'};
+const CANALES_Q  = [
+  {key:'ml',    label:'Mercado Libre', color:'#f59e0b', c:'ml_c',    e:'ml_e'    },
+  {key:'ecomm', label:'Ecommerce',     color:'#3b82f6', c:'ecomm_c', e:'ecomm_e' },
+  {key:'ripley',label:'Ripley',        color:'#ef4444', c:'ripley_c',e:'ripley_e' },
+  {key:'fala',  label:'Falabella',     color:'#22c55e', c:'fala_c',  e:'fala_e'  },
+];
+const SIZES_ORDER = ['5XL','3XL','2XL','XL','L'];
+
+// ── STATE ─────────────────────────────────────────────────────────────────────
+let S = { periodo:null, clientes:[], notas:{}, snapshots:[], selectedKey:null };
+
+// ── AUTH ──────────────────────────────────────────────────────────────────────
+setupAuth({ modulo:'growth', onReady: async (user,roles) => {
+  await loadSnapshots();
+  await loadNotas();
+  if (S.snapshots.length) await loadPeriodo(S.snapshots[0].periodo);
+}});
+
+window.fbSignInMS = async function(){
+  const err=document.getElementById('login-error'); if(err) err.textContent='';
+  try{
+    const {OAuthProvider,signInWithPopup}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+    const p=new OAuthProvider('microsoft.com'); p.setCustomParameters({tenant:'recibelo.cl'});
+    await signInWithPopup(auth,p);
+  }catch(e){if(err)err.textContent=e.message;}
+};
+window.fbSignInGoogle = async function(){
+  const err=document.getElementById('login-error'); if(err) err.textContent='';
+  try{
+    const {GoogleAuthProvider,signInWithPopup}=await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+    await signInWithPopup(auth,new GoogleAuthProvider());
+  }catch(e){if(err)err.textContent=e.message;}
+};
+
+// ── FIRESTORE ─────────────────────────────────────────────────────────────────
+async function loadSnapshots(){
+  try{
+    const sn=await getDocs(query(collection(db,'growth_snapshots'),orderBy('periodo','desc')));
+    S.snapshots=sn.docs.map(d=>d.data());
+  }catch(e){console.warn(e);}
+}
+async function loadPeriodo(periodo){
+  try{
+    const sn=await getDocs(query(collection(db,'growth_data'),where('periodo','==',periodo)));
+    S.clientes=sn.docs.map(d=>d.data());
+    S.periodo=periodo;
+    document.getElementById('periodo-lbl').textContent=' '+periodo;
+    renderDashboard(); applyFilters(); renderHistorial();
+  }catch(e){console.warn(e);}
+}
+async function loadNotas(){
+  try{
+    const sn=await getDocs(collection(db,'growth_notas'));
+    S.notas={};
+    sn.docs.forEach(d=>{S.notas[d.id]=d.data();});
+  }catch(e){console.warn(e);}
+}
+
+// ── TAG PARSER ────────────────────────────────────────────────────────────────
+function parseTags(tagStr, ecommStr){
+  const tags = tagStr ? String(tagStr).split(',').map(t=>t.trim()).filter(Boolean) : [];
+  const tl   = tags.map(t=>t.toLowerCase());
+  const hasFD  = tl.some(t=>t.includes('falabella directo'));
+  const hasRSD = tl.some(t=>t.includes('ripley sameday')||t.includes('ripley same day'));
+  const blindaje = tl.some(t=>t.includes('blin-daje')||t.includes('blindaje'));
+  const sizes = SIZES_ORDER.filter(s => tags.some(t=>t.toUpperCase().trim()===s));
+  const plat  = ecommStr ? String(ecommStr).trim() : '';
+  return {has_fd:hasFD, has_ripley_sd:hasRSD, blindaje, sizes, plataforma:plat};
+}
+
+// ── UPLOAD: RESUMEN MENSUAL ───────────────────────────────────────────────────
+document.getElementById('file-resumen').addEventListener('change', async function(e){
+  const file=e.target.files[0]; if(!file) return; e.target.value='';
+  const mmap={enero:'01',febrero:'02',marzo:'03',abril:'04',mayo:'05',junio:'06',
+               julio:'07',agosto:'08',septiembre:'09',octubre:'10',noviembre:'11',diciembre:'12'};
+  const fn=file.name.toLowerCase();
+  let m=null; for(const[k,v] of Object.entries(mmap)){if(fn.includes(k)){m=v;break;}}
+  const def=new Date().getFullYear()+'-'+(m||String(new Date().getMonth()+1).padStart(2,'0'));
+  const periodo=prompt('Período del resumen (YYYY-MM):',def);
+  if(!periodo||!/^\d{4}-\d{2}$/.test(periodo)) return;
+
+  const XLSX=await import('https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs');
+  const raw=XLSX.utils.sheet_to_json(XLSX.read(await file.arrayBuffer(),{type:'array'}).Sheets[0],{header:1,defval:null});
+
+  const clientes=[];
+  for(let i=3;i<raw.length;i++){
+    const r=raw[i];
+    if(!r[1]||typeof r[1]!=='string') continue;
+    if(r[1].toUpperCase().includes('TOTAL')) continue;
+    clientes.push({
+      periodo, cliente:r[1], cliente_key:nk(r[1]),
+      ml_c:r[2]||0,ml_e:r[3]||0,ecomm_c:r[4]||0,ecomm_e:r[5]||0,
+      ripley_c:r[6]||0,ripley_e:r[7]||0,fala_c:r[8]||0,fala_e:r[9]||0,
+      total_c:r[10]||0,total_e:r[11]||0,
+      estado:r[12]||'ACTIVO',tier:r[13]||'Tier 4',
+      // tags enriquecidos si ya existen en notas
+      has_fd:false,has_ripley_sd:false,blindaje:false,sizes:[],plataforma:''
+    });
+  }
+  if(!clientes.length){alert('No se encontraron datos.'); return;}
+  for(let i=0;i<clientes.length;i+=400){
+    const b=writeBatch(db);
+    clientes.slice(i,i+400).forEach(c=>b.set(doc(db,'growth_data',periodo+'_'+c.cliente_key),c));
+    await b.commit();
+  }
+  await setDoc(doc(db,'growth_snapshots',periodo),{
+    periodo, fecha_carga:new Date().toISOString(),
+    total:clientes.length,activos:clientes.filter(c=>c.estado==='ACTIVO').length,
+    inactivos:clientes.filter(c=>c.estado==='INACTIVO').length
+  });
+  alert('✅ '+clientes.length+' clientes cargados para '+periodo);
+  await loadSnapshots(); await loadPeriodo(periodo);
+});
+
+// ── UPLOAD: DETALLE PAQUETES ──────────────────────────────────────────────────
+document.getElementById('file-paquetes').addEventListener('change', async function(e){
+  const file=e.target.files[0]; if(!file) return; e.target.value='';
+  if(!S.periodo){alert('Primero carga el Resumen Mensual para establecer el período.');return;}
+  const confirm=window.confirm('¿Enriquecer el período '+S.periodo+' con los datos de tags y plataformas de este Excel?');
+  if(!confirm) return;
+
+  const XLSX=await import('https://cdn.sheetjs.com/xlsx-0.20.2/package/xlsx.mjs');
+  const raw=XLSX.utils.sheet_to_json(XLSX.read(await file.arrayBuffer(),{type:'array'}).Sheets[0],{header:1,defval:null});
+
+  // Agrupar por cliente: Col D (idx 3)=Cliente, Col E (idx 4)=Ecommerce, Col F (idx 5)=Tags
+  const byClient={};
+  for(let i=1;i<raw.length;i++){
+    const r=raw[i];
+    const nombre=r[3]; if(!nombre||typeof nombre!=='string') continue;
+    const key=nk(nombre);
+    if(!byClient[key]) byClient[key]={nombre,ecomm_vals:new Set(),all_tags:[]};
+    if(r[4]) byClient[key].ecomm_vals.add(String(r[4]).trim());
+    if(r[5]) byClient[key].all_tags.push(String(r[5]));
+  }
+
+  // Para cada cliente: combinar tags y derivar campos
+  const enriched={};
+  for(const[key,data] of Object.entries(byClient)){
+    const combinedTags=data.all_tags.join(',');
+    const parsed=parseTags(combinedTags,'');
+    // Plataforma más frecuente
+    const platCount={};
+    data.ecomm_vals.forEach(v=>{platCount[v]=(platCount[v]||0)+1;});
+    const plataforma=Object.entries(platCount).sort((a,b)=>b[1]-a[1])[0]?.[0]||'';
+    enriched[key]={...parsed,plataforma};
+  }
+
+  // Batch update growth_data para el período activo
+  const toUpdate=S.clientes.filter(c=>enriched[c.cliente_key]);
+  if(!toUpdate.length){alert('No se encontraron coincidencias de clientes con el período activo.');return;}
+
+  for(let i=0;i<toUpdate.length;i+=400){
+    const b=writeBatch(db);
+    toUpdate.slice(i,i+400).forEach(c=>{
+      const en=enriched[c.cliente_key];
+      b.set(doc(db,'growth_data',S.periodo+'_'+c.cliente_key),{...c,...en},{merge:true});
+    });
+    await b.commit();
+  }
+  alert('✅ '+toUpdate.length+' clientes enriquecidos con datos de tags y plataformas.');
+  await loadPeriodo(S.periodo);
+});
+
+// ── TABS ──────────────────────────────────────────────────────────────────────
+window.switchTab=function(tab){
+  document.querySelectorAll('.tab-btn').forEach((b,i)=>b.classList.toggle('active',['dashboard','clientes','historial'][i]===tab));
+  ['dashboard','clientes','historial'].forEach(t=>{
+    const el=document.getElementById('view-'+t);
+    if(el) el.style.display=t===tab?(t==='clientes'?'flex':'block'):'none';
+  });
+};
+
+// ── DASHBOARD ─────────────────────────────────────────────────────────────────
+function renderDashboard(){
+  const c=S.clientes; if(!c.length) return;
+  const activos=c.filter(x=>x.estado==='ACTIVO');
+  const totalC=c.reduce((s,x)=>s+x.total_c,0);
+  const totalE=c.reduce((s,x)=>s+x.total_e,0);
+  const tasa=totalC?Math.round(totalE/totalC*100):0;
+  const blindajeN=c.filter(x=>x.blindaje).length;
+  const fdN=c.filter(x=>x.has_fd).length;
+  const rsdN=c.filter(x=>x.has_ripley_sd).length;
+  const multi=c.filter(x=>CANALES_Q.filter(ch=>x[ch.c]>0).length>=2).length;
+
+  const byTier={};
+  TIERS.forEach(t=>{byTier[t]=c.filter(x=>x.tier===t).length;});
+  const maxT=Math.max(...Object.values(byTier),1);
+
+  const byCanal=CANALES_Q.map(ch=>({...ch,tot:c.reduce((s,x)=>s+(x[ch.e]||0),0)}));
+  const maxC=Math.max(...byCanal.map(x=>x.tot),1);
+
+  // Plataformas (solo de clientes que tienen datos enriquecidos)
+  const platCount={};
+  c.forEach(x=>{if(x.plataforma){platCount[x.plataforma]=(platCount[x.plataforma]||0)+1;}});
+  const plats=Object.entries(platCount).sort((a,b)=>b[1]-a[1]);
+  const maxP=plats[0]?.[1]||1;
+
+  const tc=tasa>=80?'var(--verde)':tasa>=60?'var(--amarillo)':'var(--rojo)';
+
+  document.getElementById('dash-content').innerHTML=`
+    <div class="kpi-row">
+      <div class="kpi-card" style="--accent:var(--verde)">
+        <div class="kpi-val">${activos.length}</div>
+        <div class="kpi-lbl">Clientes activos</div>
+        <div class="kpi-sub">de ${c.length} totales</div>
+      </div>
+      <div class="kpi-card" style="--accent:${TIER_COLOR['Tier S']}">
+        <div class="kpi-val">${byTier['Tier S']||0}</div>
+        <div class="kpi-lbl">Tier S (2000+)</div>
+        <div class="kpi-sub">${byTier['Tier 1']||0} en Tier 1</div>
+      </div>
+      <div class="kpi-card" style="--accent:${tc}">
+        <div class="kpi-val" style="color:${tc}">${tasa}%</div>
+        <div class="kpi-lbl">Completación global</div>
+        <div class="kpi-sub">${totalE.toLocaleString()} / ${totalC.toLocaleString()} pedidos</div>
+      </div>
+      <div class="kpi-card" style="--accent:var(--violeta)">
+        <div class="kpi-val">${multi}</div>
+        <div class="kpi-lbl">Multi-canal (2+)</div>
+        <div class="kpi-sub">${Math.round(multi/Math.max(activos.length,1)*100)}% de activos</div>
+      </div>
+      ${blindajeN?`<div class="kpi-card" style="--accent:var(--amarillo)">
+        <div class="kpi-val">🛡 ${blindajeN}</div>
+        <div class="kpi-lbl">Blin-daje</div>
+        <div class="kpi-sub">proteger a toda costa</div>
+      </div>`:''}
+      ${fdN?`<div class="kpi-card" style="--accent:var(--verde)">
+        <div class="kpi-val">${fdN}</div>
+        <div class="kpi-lbl">Falabella Directo</div>
+        <div class="kpi-sub">${rsdN} con Ripley Sameday</div>
+      </div>`:''}
+    </div>
+    <div class="bars-grid">
+      <div class="bar-card">
+        <div class="bar-card-title">Distribución por Tier</div>
+        ${TIERS.map(t=>`
+          <div class="bar-row">
+            <span class="bar-label">${t}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round((byTier[t]||0)/maxT*100)}%;background:${TIER_COLOR[t]}"></div></div>
+            <span class="bar-val">${byTier[t]||0}</span>
+          </div>`).join('')}
+      </div>
+      <div class="bar-card">
+        <div class="bar-card-title">Pedidos completados por canal</div>
+        ${byCanal.map(ch=>`
+          <div class="bar-row">
+            <span class="bar-label" style="color:${ch.color}">${ch.label}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(ch.tot/maxC*100)}%;background:${ch.color}"></div></div>
+            <span class="bar-val">${ch.tot.toLocaleString()}</span>
+          </div>`).join('')}
+      </div>
+      ${plats.length?`<div class="bar-card">
+        <div class="bar-card-title">Plataformas de integración</div>
+        ${plats.slice(0,6).map(([p,n])=>`
+          <div class="bar-row">
+            <span class="bar-label">${p}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxP*100)}%;background:var(--azul)"></div></div>
+            <span class="bar-val">${n}</span>
+          </div>`).join('')}
+      </div>`:''}
+      ${fdN||rsdN?`<div class="bar-card">
+        <div class="bar-card-title">Canales especiales (tags)</div>
+        ${[
+          {l:'Falabella Directo',n:fdN,cl:'#22c55e'},
+          {l:'Ripley Sameday',n:rsdN,cl:'#ef4444'},
+          {l:'Blin-daje 🛡',n:blindajeN,cl:'#f59e0b'},
+        ].map(x=>`
+          <div class="bar-row">
+            <span class="bar-label" style="color:${x.cl}">${x.l}</span>
+            <div class="bar-track"><div class="bar-fill" style="width:${Math.round(x.n/Math.max(fdN,rsdN,blindajeN,1)*100)}%;background:${x.cl}"></div></div>
+            <span class="bar-val">${x.n}</span>
+          </div>`).join('')}
+      </div>`:''}
+    </div>`;
+}
+
+// ── CLIENTES TABLE ────────────────────────────────────────────────────────────
+window.applyFilters=function(){
+  const q=document.getElementById('q-search').value.toLowerCase();
+  const tier=document.getElementById('f-tier').value;
+  const canal=document.getElementById('f-canal').value;
+  const plat=document.getElementById('f-plat').value;
+  const extra=document.getElementById('f-extra').value;
+
+  let rows=S.clientes.filter(c=>{
+    if(q&&!c.cliente.toLowerCase().includes(q)) return false;
+    if(tier&&c.tier!==tier) return false;
+    if(plat&&c.plataforma!==plat) return false;
+    if(canal){
+      if(canal==='fd'&&!c.has_fd) return false;
+      if(canal==='ripley_sd'&&!c.has_ripley_sd) return false;
+      const ch=CANALES_Q.find(x=>x.key===canal);
+      if(ch&&!(c[ch.c]>0)) return false;
+    }
+    if(extra==='blindaje'&&!c.blindaje) return false;
+    if(extra==='xl'&&!c.sizes?.some(s=>['XL','2XL','3XL','5XL'].includes(s))) return false;
+    if(extra==='3xl'&&!c.sizes?.some(s=>['3XL','5XL'].includes(s))) return false;
+    return true;
+  });
+
+  document.getElementById('count-lbl').textContent=rows.length+' clientes';
+  const tbody=document.getElementById('clientes-tbody');
+
+  const CANAL_COLORS={ml:'#f59e0b',ecomm:'#3b82f6',ripley:'#ef4444',fala:'#22c55e'};
+  tbody.innerHTML=rows.map(c=>{
+    const tasa=c.total_c?Math.round(c.total_e/c.total_c*100):0;
+    const tc=tasa>=80?'tasa-good':tasa>=60?'tasa-warn':'tasa-bad';
+    const tierCls=TIER_CLS[c.tier]||'tier-4';
+    const actChDots=CANALES_Q.filter(ch=>c[ch.c]>0).map(ch=>
+      `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ch.color};margin-right:1px" title="${ch.label}"></span>`
+    ).join('');
+    const fdTag=c.has_fd?'<span class="badge badge-fd" style="margin-left:2px">FD</span>':'';
+    const rsdTag=c.has_ripley_sd?'<span class="badge badge-rpl" style="margin-left:2px">RSd</span>':'';
+    const platCell=c.plataforma?`<span class="plat-chip">${c.plataforma}</span>`:'<span style="color:var(--muted)">—</span>';
+    const blindCell=c.blindaje?'🛡':'';
+    const isSel=c.cliente_key===S.selectedKey;
+    return `<tr onclick="selectCliente('${c.cliente_key}')" class="${isSel?'selected':''} ${c.blindaje?'blindaje-row':''}">
+      <td style="color:var(--muted)">${S.clientes.indexOf(c)+1}</td>
+      <td class="nm">${c.cliente}</td>
+      <td>${platCell}</td>
+      <td>${actChDots}${fdTag}${rsdTag}</td>
+      <td><strong>${c.total_e.toLocaleString()}</strong></td>
+      <td class="${tc}">${tasa}%</td>
+      <td><span class="tier-chip ${tierCls}">${c.tier}</span></td>
+      <td style="font-size:14px">${blindCell}</td>
+    </tr>`;
+  }).join('');
+};
+
+// ── CLIENT DETAIL ──────────────────────────────────────────────────────────────
+window.selectCliente=function(key){
+  S.selectedKey=key;
+  const c=S.clientes.find(x=>x.cliente_key===key); if(!c) return;
+  const nota=S.notas[key]||{};
+  document.getElementById('detail-panel').className='detail-panel open';
+
+  const tasa=c.total_c?Math.round(c.total_e/c.total_c*100):0;
+  const gap=c.total_c-c.total_e;
+  const chActivos=CANALES_Q.filter(ch=>c[ch.c]>0);
+  const chVacios=CANALES_Q.filter(ch=>!c[ch.c]);
+
+  document.getElementById('dp-nombre').textContent=c.cliente;
+  const subParts=[
+    `<span class="tier-chip ${TIER_CLS[c.tier]||'tier-4'}">${c.tier}</span>`,
+    c.estado,
+  ];
+  if(c.plataforma) subParts.push(`<span class="plat-chip">${c.plataforma}</span>`);
+  document.getElementById('dp-sub').innerHTML=subParts.join(' · ');
+
+  // Blindaje alert
+  const alert=document.getElementById('dp-blindaje-alert');
+  alert.style.display=c.blindaje?'block':'none';
+
+  document.getElementById('dp-metrics').innerHTML=`
+    <div class="dp-metric"><div class="dp-metric-val">${c.total_e.toLocaleString()}</div><div class="dp-metric-lbl">Completados</div></div>
+    <div class="dp-metric"><div class="dp-metric-val" style="color:${tasa>=80?'var(--verde)':tasa>=60?'var(--amarillo)':'var(--rojo)'}">${tasa}%</div><div class="dp-metric-lbl">Tasa complet.</div></div>
+    <div class="dp-metric"><div class="dp-metric-val">${c.total_c.toLocaleString()}</div><div class="dp-metric-lbl">Creados (sistema)</div></div>
+    <div class="dp-metric"><div class="dp-metric-val" style="color:var(--rojo)">${gap.toLocaleString()}</div><div class="dp-metric-lbl">Gap (¿otro courier?)</div></div>`;
+
+  document.getElementById('dp-channels').innerHTML=
+    chActivos.map(ch=>{
+      const t=c[ch.c]?Math.round(c[ch.e]/c[ch.c]*100):0;
+      return `<div class="ch-row">
+        <span class="ch-dot" style="background:${ch.color}"></span>
+        <span class="ch-name">${ch.label}</span>
+        <span class="ch-nums">${(c[ch.e]||0).toLocaleString()} / ${(c[ch.c]||0).toLocaleString()}</span>
+        <span class="ch-tasa ${t>=80?'tasa-good':t>=60?'tasa-warn':'tasa-bad'}">${t}%</span>
+      </div>`;
+    }).join('')+
+    (chVacios.length?`<div class="ch-empty">Sin datos: ${chVacios.map(x=>x.label).join(' · ')}</div>`:'');
+
+  // Tags section
+  const tagsSec=document.getElementById('dp-tags-sec');
+  const tagsContent=document.getElementById('dp-tags-content');
+  const hasTags=c.has_fd||c.has_ripley_sd||c.blindaje||(c.sizes&&c.sizes.length)||c.plataforma;
+  tagsSec.style.display=hasTags?'block':'none';
+  if(hasTags){
+    const chips=[];
+    if(c.has_fd) chips.push('<span class="badge badge-fd">🟢 Falabella Directo</span>');
+    if(c.has_ripley_sd) chips.push('<span class="badge badge-rpl">🔴 Ripley Sameday</span>');
+    if(c.blindaje) chips.push('<span class="badge badge-blindaje">🛡 Blin-daje</span>');
+    (c.sizes||[]).forEach(s=>chips.push(`<span class="size-chip">${s}</span>`));
+    tagsContent.innerHTML=chips.join('');
+  }
+
+  document.getElementById('dp-oport').value=nota.oportunidad||'';
+  document.getElementById('dp-notas').value=nota.notas||'';
+  const btn=document.getElementById('btn-save-nota');
+  btn.textContent='Guardar nota'; btn.className='btn-save';
+  applyFilters();
+};
+
+window.saveNota=async function(){
+  const key=S.selectedKey; if(!key) return;
+  const c=S.clientes.find(x=>x.cliente_key===key);
+  const data={
+    cliente_key:key, cliente_nombre:c?.cliente||key,
+    notas:document.getElementById('dp-notas').value,
+    oportunidad:document.getElementById('dp-oport').value,
+    updated:new Date().toISOString()
+  };
+  try{
+    await setDoc(doc(db,'growth_notas',key),data);
+    S.notas[key]=data;
+    const btn=document.getElementById('btn-save-nota');
+    btn.textContent='✓ Guardado'; btn.className='btn-save saved';
+    setTimeout(()=>{btn.textContent='Guardar nota';btn.className='btn-save';},2000);
+  }catch(e){alert('Error: '+e.message);}
+};
+
+// ── HISTORIAL ─────────────────────────────────────────────────────────────────
+function renderHistorial(){
+  const snaps=S.snapshots; if(!snaps.length) return;
+  const cards=snaps.map(s=>`
+    <div class="hist-card ${s.periodo===S.periodo?'hc-active':''}" onclick="switchHistPeriod('${s.periodo}')">
+      <div class="hist-periodo">${s.periodo}</div>
+      <div class="hist-meta">Cargado ${s.fecha_carga?.slice(0,10)||'—'}</div>
+      <div class="hist-kpis">
+        <div class="hkpi"><strong>${s.activos}</strong>activos</div>
+        <div class="hkpi"><strong>${s.inactivos}</strong>inactivos</div>
+        <div class="hkpi"><strong>${s.total}</strong>total</div>
+      </div>
+    </div>`).join('');
+
+  let compHTML='';
+  if(snaps.length>=2){
+    const a=snaps[0],b=snaps[1];
+    const d=(va,vb)=>{const dd=va-vb;const cl=dd>0?'delta-pos':dd<0?'delta-neg':'';return`<span class="${cl}">${dd>0?'+':''}${dd}</span>`;};
+    compHTML=`
+      <div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px;margin-top:20px">
+        Comparativa: ${b.periodo} → ${a.periodo}
+      </div>
+      <div class="comp-grid">
+        <div class="comp-card">
+          <div class="comp-title">Clientes</div>
+          <div class="comp-row"><span>Activos</span><span>${b.activos} → <strong>${a.activos}</strong> ${d(a.activos,b.activos)}</span></div>
+          <div class="comp-row"><span>Inactivos</span><span>${b.inactivos} → <strong>${a.inactivos}</strong> ${d(a.inactivos,b.inactivos)}</span></div>
+          <div class="comp-row"><span>Total</span><span>${b.total} → <strong>${a.total}</strong> ${d(a.total,b.total)}</span></div>
+        </div>
+      </div>`;
+  }
+  document.getElementById('hist-content').innerHTML=
+    `<div style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px">Períodos cargados (${snaps.length})</div>
+     <div class="hist-grid">${cards}</div>${compHTML}`;
+}
+window.switchHistPeriod=async function(p){await loadPeriodo(p);renderHistorial();};
+</script>
+</body>
+</html>

@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<!--
+  ╔══════════════════════════════════════════════════════════════╗
+  ║   PLANTILLA ESTÁNDAR DE MÓDULO — Plataforma Recíbelo         ║
+  ║   Copiar este archivo al crear un módulo nuevo.               ║
+  ║   Buscar TODO: y reemplazar con los valores del módulo.       ║
+  ╚══════════════════════════════════════════════════════════════╝
+
+  ESTRUCTURA OBLIGATORIA:
+  ┌─────────────────────────────────────────┐
+  │  <header>  logo · badge · user chip     │  ← ancho completo
+  ├──────────┬──────────────────────────────┤
+  │          │  [contenido del módulo]       │
+  │ sidebar  │                               │
+  │          │                               │
+  └──────────┴──────────────────────────────┘
+
+  REGLAS:
+  - Sidebar NUNCA usa position:fixed — siempre flex child de .app-shell
+  - User info SIEMPRE en el <header>, nunca en el sidebar
+  - CSS variables de :root definidas aquí — NO hardcodear colores
+  - setupAuth() de /shared/auth.js maneja auth + sidebar visibility
+  - El item activo en el sidebar NO lleva id="nav-X" (siempre visible)
+  - Todos los demás items llevan id="nav-X" style="display:none" (setupAuth los muestra)
+-->
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TODO: Nombre Módulo — Recíbelo</title>
+  <style>
+    /* ── Variables globales ── compartidas con todos los módulos ─── */
+    :root {
+      --bg:       #0f1117;
+      --card:     #1a1d27;
+      --card2:    #20243a;
+      --border:   #2a2d3e;
+      --text:     #e8eaf0;
+      --muted:    #6b7280;
+      --muted2:   #4b5563;
+      --orange:   #FF6B35;
+      --azul:     #3b82f6;
+      --verde:    #22c55e;
+      --rojo:     #ef4444;
+      --amarillo: #f59e0b;
+      --violeta:  #8b5cf6;
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── #app — contenedor raíz (oculto hasta auth) ─────────────── */
+    /* JS hace: document.getElementById('app').style.display = 'flex' */
+    #app {
+      display: none;
+      flex-direction: column;
+      flex: 1;
+    }
+
+    /* ── Header: ancho completo, fijo en la parte superior ─────── */
+    header {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      height: 56px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      position: fixed;   /* SIEMPRE fixed, left:0 right:0 → full width */
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 200;
+    }
+    .badge-module {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--amarillo);
+      border-radius: 6px;
+      padding: 3px 10px;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: .04em;
+    }
+    .user-chip {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      padding: 6px 12px;
+      border-radius: 8px;
+      border: 1px solid var(--border);
+      transition: background .15s;
+    }
+    .user-chip:hover { background: rgba(255,255,255,.05); }
+    .user-avatar {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: var(--amarillo);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      font-weight: 700;
+      color: #fff;
+    }
+    .user-name { font-size: 12px; color: var(--muted2); }
+
+    /* ── Shell: sidebar + contenido en fila ─────────────────────── */
+    .app-shell {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-height: 0;
+      padding-top: 56px;  /* compensa el header fixed */
+    }
+
+    /* ── Sidebar: flex child (NUNCA position:fixed) ─────────────── */
+    .sidebar {
+      width: 200px;
+      min-width: 200px;
+      background: var(--card);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      flex-shrink: 0;
+    }
+    .nav-section {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      padding: 12px 20px 6px;
+    }
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px 20px;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted2);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: all .15s;
+    }
+    .nav-item:hover { background: rgba(255,255,255,.04); color: var(--text); }
+    .nav-item.active {
+      color: var(--text);
+      border-left-color: var(--amarillo);
+      background: rgba(245, 158, 11, .08);
+    }
+
+    /* ── Contenido principal ─────────────────────────────────────── */
+    .main-content {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      background: var(--bg);
+    }
+
+    /* ── TODO: estilos propios del módulo debajo de esta línea ─── */
+
+  </style>
+</head>
+<body>
+
+<!-- ══ LOGIN SCREEN ══════════════════════════════════════════════════════════ -->
+<div id="login-screen" style="display:flex;align-items:center;justify-content:center;flex:1;background:var(--bg)">
+  <div style="background:var(--card);border:1px solid var(--border);border-radius:16px;padding:48px 40px;max-width:400px;width:100%;text-align:center">
+    <img src="/recibelo.cl2.png" alt="Recíbelo" style="height:36px;margin-bottom:24px">
+    <h2 style="font-size:20px;font-weight:700;color:var(--text);margin-bottom:8px">TODO: Nombre Módulo</h2>
+    <p style="font-size:14px;color:var(--muted);margin-bottom:28px">Inicia sesión para acceder al módulo</p>
+    <button onclick="signInWithMicrosoft()" style="width:100%;background:#0078d4;color:#fff;border:none;padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:10px;margin-bottom:10px">
+      <svg width="16" height="16" viewBox="0 0 21 21" fill="none">
+        <rect x="1" y="1" width="9" height="9" fill="#f25022"/>
+        <rect x="11" y="1" width="9" height="9" fill="#7fba00"/>
+        <rect x="1" y="11" width="9" height="9" fill="#00a4ef"/>
+        <rect x="11" y="11" width="9" height="9" fill="#ffb900"/>
+      </svg>
+      Iniciar con Microsoft
+    </button>
+    <button onclick="signInWithGoogle()" style="width:100%;background:var(--card2);color:var(--text);border:1px solid var(--border);padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">
+      Iniciar con Google
+    </button>
+    <p id="login-error" style="color:var(--rojo);font-size:13px;margin-top:14px;min-height:18px"></p>
+  </div>
+</div>
+
+<!-- ══ APP (visible tras autenticación) ══════════════════════════════════════ -->
+<div id="app">
+
+  <!-- HEADER: logo + badge módulo + user chip ────────────────────────────── -->
+  <header>
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="/recibelo.cl2.png" alt="Recibelo" style="height:28px">
+      <span class="badge-module">TODO: Nombre Módulo</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:14px">
+      <!-- TODO: info contextual del módulo (ej: fecha, archivo cargado, etc.) -->
+      <!-- <span id="header-info" style="font-size:12px;color:var(--muted)">—</span> -->
+      <div class="user-chip" onclick="doSignOut()">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <span class="user-name" id="user-name"></span>
+        <span style="font-size:11px;color:var(--muted);margin-left:2px">salir</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- SHELL: sidebar + contenido ─────────────────────────────────────────── -->
+  <div class="app-shell">
+
+    <!-- SIDEBAR ─────────────────────────────────────────────────────────── -->
+    <nav class="sidebar">
+      <div class="nav-section">Módulos</div>
+      <!-- Items gestionados por setupAuth() — arrancan ocultos -->
+      <a id="nav-controller"  href="/"                class="nav-item" style="display:none">📋 Controller</a>
+      <a id="nav-asistencia"  href="/asistencia_ruta" class="nav-item" style="display:none">🚚 Asistencia Ruta</a>
+      <a id="nav-operacional" href="/operacional"     class="nav-item" style="display:none">📦 Operacional</a>
+      <a id="nav-finanzas"    href="/finanzas"        class="nav-item" style="display:none">💰 Finanzas</a>
+      <a id="nav-sla"         href="/sla"             class="nav-item" style="display:none">📊 SLA CX</a>
+      <a id="nav-incidencias" href="/incidencias"     class="nav-item" style="display:none">📊 Incidencias</a>
+      <a id="nav-retiros"     href="/retiros"         class="nav-item" style="display:none">🚛 Retiros</a>
+      <!-- TODO: agregar nav-item del módulo actual SIN id (siempre visible, class active) -->
+      <!-- <a href="/TODO" class="nav-item active">🔧 TODO: Módulo</a> -->
+    </nav>
+
+    <!-- CONTENIDO PRINCIPAL ──────────────────────────────────────────────── -->
+    <main class="main-content">
+      <!-- TODO: contenido del módulo aquí -->
+      <div style="padding:32px;color:var(--muted)">
+        Contenido del módulo...
+      </div>
+    </main>
+
+  </div><!-- /app-shell -->
+</div><!-- /app -->
+
+
+<script type="module">
+// ── Imports ──────────────────────────────────────────────────────────────────
+import { db, setupAuth } from "/shared/auth.js";
+// TODO: agregar imports de Firestore que necesite el módulo:
+// import { doc, getDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// ── Auth ─────────────────────────────────────────────────────────────────────
+setupAuth({
+  modulo: "TODO",   // ← reemplazar con el nombre del módulo (ver shared/auth.js _MODULO_ROL)
+  onReady: async (user, roles) => {
+    document.getElementById('app').style.display = 'flex';
+    await cargarDatos();
+  }
+});
+
+// ── Lógica del módulo ─────────────────────────────────────────────────────────
+async function cargarDatos() {
+  // TODO: implementar
+}
+
+</script>
+</body>
+</html>
