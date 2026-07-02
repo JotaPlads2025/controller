@@ -71,34 +71,87 @@ export function safeId(s) {
  * asistencia_ruta: también accesible con rol "controller".
  */
 const _MODULO_ROL = {
+  home:            r => true,   // cualquier usuario autenticado
   controller:      r => r.includes("controller") || r.includes("admin"),
   asistencia_ruta: r => r.includes("asistencia_ruta") || r.includes("controller") || r.includes("admin"),
   operacional:     r => r.includes("operacional") || r.includes("admin"),
   finanzas:        r => r.includes("finanzas") || r.includes("admin"),
   sla:             r => r.includes("sla") || r.includes("controller") || r.includes("admin"),
   incidencias:     r => r.includes("incidencias") || r.includes("controller") || r.includes("admin"),
+  retiros:         r => r.includes("retiros")    || r.includes("controller") || r.includes("admin"),
+  growth:          r => r.includes("growth")     || r.includes("controller") || r.includes("admin"),
 };
 
-// ── SIDEBAR ───────────────────────────────────────────────────
+// ── SIDEBAR — FUENTE ÚNICA ────────────────────────────────────────────────────
 /**
- * Muestra u oculta un link del sidebar buscando por IDs:
- * "nav-{id}" (usado en asistencia_ruta, operacional, finanzas)
- * "sidebar-{id}" (usado en controller / index.html)
+ * _MODULOS_SIDEBAR — lista canónica de todos los módulos.
+ * Para agregar un módulo nuevo: solo editar este array.
+ * auth.js lo inyecta en el <nav> de todos los módulos automáticamente.
  */
-function _showNav(id, visible) {
-  const el = document.getElementById("nav-" + id)
-           || document.getElementById("sidebar-" + id);
-  if (el) el.style.display = visible ? "flex" : "none";
-}
+const _MODULOS_SIDEBAR = [
+  { modulo: "controller",      icon: "🏠", label: "Inicio",            url: "/",                role: "controller"      },
+  { modulo: "asistencia_ruta", icon: "🚚", label: "Asistencia Ruta",  url: "/asistencia_ruta", role: "asistencia_ruta" },
+  { modulo: "operacional",     icon: "⚙️",  label: "Operacional",      url: "/operacional",     role: "operacional"     },
+  { modulo: "finanzas",        icon: "💰", label: "Finanzas",          url: "/finanzas",        role: "finanzas"        },
+  { modulo: "sla",             icon: "📊", label: "SLA CX",            url: "/sla",             role: "sla"             },
+  { modulo: "incidencias",     icon: "📋", label: "Incidencias",       url: "/incidencias",     role: "incidencias"     },
+  { modulo: "retiros",         icon: "🚛", label: "Retiros",           url: "/retiros",         role: "retiros"         },
+  { modulo: "growth",          icon: "📈", label: "Growth",            url: "/growth",          role: "growth"          },
+];
 
-/** Aplica visibilidad del sidebar según los roles del usuario. */
-function _aplicarSidebar(roles) {
-  _showNav("controller",   _MODULO_ROL.controller(roles));
-  _showNav("asistencia",   _MODULO_ROL.asistencia_ruta(roles));
-  _showNav("operacional",  _MODULO_ROL.operacional(roles));
-  _showNav("finanzas",     _MODULO_ROL.finanzas(roles));
-  _showNav("sla",          _MODULO_ROL.sla(roles));
-  _showNav("incidencias",  _MODULO_ROL.incidencias(roles));
+/**
+ * _RECURSOS — links públicos (sin rol) siempre visibles al fondo del sidebar.
+ * Para agregar Mercado Flex: descomentar la línea correspondiente.
+ */
+const _RECURSOS = [
+  { emoji: "🟢", label: "Falabella Directo", url: "/falabella/" },
+  // { emoji: "🟡", label: "Mercado Flex",      url: "/mercado-flex/" },
+];
+
+/**
+ * _aplicarSidebar(roles, activeModule)
+ * Reconstruye el <nav> completo desde la fuente única _MODULOS_SIDEBAR.
+ * Muestra solo los módulos accesibles para el usuario.
+ * Marca como .active el módulo actual.
+ * Inyecta sección Recursos al fondo.
+ */
+function _aplicarSidebar(roles, activeModule) {
+  // Busca sidebar en cualquier variante: <nav class="sidebar">, <nav> (Controller), o .app-shell nav
+  const sidebar = document.querySelector("nav.sidebar")
+               || document.querySelector(".app-shell nav")
+               || document.querySelector("nav");
+  if (!sidebar) return;
+
+  // CSS de sección Recursos (inyectar una sola vez)
+  if (!document.getElementById("_sb-css")) {
+    const st = document.createElement("style");
+    st.id = "_sb-css";
+    st.textContent =
+      "nav.sidebar,nav{display:flex!important;flex-direction:column!important}" +
+      ".nav-recursos{margin-top:auto;border-top:1px solid var(--border,#2a2d3e);padding-top:4px}" +
+      ".nav-item-rec{font-size:12px!important;opacity:.8}" +
+      ".nav-item-rec .ext{font-size:10px;margin-left:auto;opacity:.5}";
+    document.head.appendChild(st);
+  }
+
+  // Items de módulos filtrados por rol
+  const modItems = _MODULOS_SIDEBAR
+    .filter(m => _MODULO_ROL[m.role] && _MODULO_ROL[m.role](roles))
+    .map(m => {
+      const active = (m.modulo === activeModule) ? " active" : "";
+      return '<a href="' + m.url + '" class="nav-item' + active + '">' + m.icon + " " + m.label + "</a>";
+    }).join("");
+
+  // Items de recursos
+  const recItems = _RECURSOS.map(r =>
+    '<a href="' + r.url + '" target="_blank" rel="noopener" class="nav-item nav-item-rec">' +
+    r.emoji + " " + r.label + ' <span class="ext">&#8599;</span></a>'
+  ).join("");
+
+  // Reconstruir sidebar
+  sidebar.innerHTML =
+    '<div class="nav-section">Módulos</div>' + modItems +
+    '<div class="nav-recursos"><div class="nav-section">Recursos</div>' + recItems + "</div>";
 }
 
 // ── ACCESO ────────────────────────────────────────────────────
@@ -262,17 +315,14 @@ export function setupAuth({ modulo, onReady, loginErrorId = "login-error" }) {
         return;
       }
 
-      // Aplicar sidebar según roles
-      _aplicarSidebar(roles);
+      // Aplicar sidebar según roles (fuente única en auth.js)
+      _aplicarSidebar(roles, modulo);
 
       // Mostrar app, ocultar login
       const loginEl = document.getElementById("login-screen");
       const appEl   = document.getElementById("app");
       if (loginEl) loginEl.style.display = "none";
       if (appEl)   appEl.style.display   = "flex";
-
-      // Mostrar strip de clima (todos los módulos, todos los roles)
-      _insertWeatherStrip();
 
       // Rellenar user chip
       const avatarEl = document.getElementById("user-avatar");
@@ -295,3 +345,4 @@ export function setupAuth({ modulo, onReady, loginErrorId = "login-error" }) {
 
 /** Exportada para módulos que no usan setupAuth() (ej: Controller). */
 export { _insertWeatherStrip as insertWeatherStrip };
+                                                                                                   

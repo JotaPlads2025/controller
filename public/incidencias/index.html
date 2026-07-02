@@ -107,6 +107,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
       <a id="nav-finanzas"     href="/finanzas"        class="nav-item" style="display:none">💰 Finanzas</a>
       <a id="nav-sla"          href="/sla"             class="nav-item" style="display:none">📈 SLA CX</a>
       <a id="nav-incidencias"  href="/incidencias"     class="nav-item active">📊 Incidencias</a>
+      <a id="nav-retiros" href="/retiros" class="nav-item" style="display:none">🚛 Retiros</a>
     </nav>
 
     <div class="app-content">
@@ -138,6 +139,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
           <div class="tab" onclick="switchTab('trazabilidad',this)">📍 Trazabilidad</div>
           <div class="tab" onclick="switchTab('retiro',this)">🚚 Retiro</div>
           <div class="tab" onclick="switchTab('comercial',this)">💼 Comercial</div>
+          <div class="tab" onclick="switchTab('finanzas',this)">💰 Finanzas</div>
           <div class="tab" onclick="switchTab('enviar',this)">📧 Enviar reporte</div>
           <div class="tab" onclick="switchTab('historial',this);loadHistorial()">📅 Historial</div>
         </div>
@@ -145,6 +147,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
         <!-- DASHBOARD -->
         <div id="tab-dashboard" class="tab-content active">
           <div class="kpi-grid" id="kpi-grid"></div>
+          <div id="sin-incid-banner" style="display:none;margin-bottom:16px"></div>
           <div class="chart-row">
             <div class="chart-card">
               <h4>Distribución por área</h4>
@@ -159,6 +162,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
 
         <!-- OPERACIONES -->
         <div id="tab-operaciones" class="tab-content">
+          <div id="sin-op-badge" style="display:none;margin-bottom:14px"></div>
           <div class="chart-row">
             <div class="chart-card">
               <h4>Por tipo de incidencia</h4>
@@ -179,6 +183,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
 
         <!-- TRAZABILIDAD -->
         <div id="tab-trazabilidad" class="tab-content">
+          <div id="sin-traz-badge" style="display:none;margin-bottom:14px"></div>
           <div class="chart-row">
             <div class="chart-card">
               <h4>Por estado</h4>
@@ -195,6 +200,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
 
         <!-- RETIRO -->
         <div id="tab-retiro" class="tab-content">
+          <div id="sin-ret-badge" style="display:none;margin-bottom:14px"></div>
           <div class="chart-row">
             <div class="chart-card">
               <h4>Por responsable</h4>
@@ -215,6 +221,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
 
         <!-- COMERCIAL -->
         <div id="tab-comercial" class="tab-content">
+          <div id="sin-com-badge" style="display:none;margin-bottom:14px"></div>
           <div class="chart-row">
             <div class="chart-card">
               <h4>Por área</h4>
@@ -229,6 +236,27 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
           <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Área</th><th>Tipo</th><th>Responsable</th><th>Detalle</th></tr></thead><tbody id="tbody-com"></tbody></table></div>
         </div>
 
+        <!-- FINANZAS -->
+        <div id="tab-finanzas" class="tab-content">
+          <div id="sin-fin-badge" style="display:none;margin-bottom:14px"></div>
+          <div class="chart-row">
+            <div class="chart-card">
+              <h4>Por tipo</h4>
+              <div class="chart-wrap"><canvas id="chart-fin-tipo"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por responsable</h4>
+              <div class="chart-wrap"><canvas id="chart-fin-resp"></canvas></div>
+            </div>
+            <div class="chart-card">
+              <h4>Por cliente</h4>
+              <div class="chart-wrap"><canvas id="chart-fin-cli"></canvas></div>
+            </div>
+          </div>
+          <div class="section-title">📋 Detalle completo <span id="fin-count" style="font-size:12px;color:var(--muted2);font-weight:400"></span></div>
+          <div class="table-wrap"><table class="data-table"><thead><tr><th>Fecha</th><th>Tipo</th><th>Cliente</th><th>Responsable</th><th>Detalle</th></tr></thead><tbody id="tbody-fin"></tbody></table></div>
+        </div>
+
         <!-- ENVIAR -->
         <div id="tab-enviar" class="tab-content">
           <div style="max-width:600px">
@@ -241,7 +269,7 @@ textarea.form-input{resize:vertical;min-height:100px;font-family:inherit}
               <textarea id="comentario" class="form-input" placeholder="Escribe tu comentario aquí..."></textarea>
             </div>
             <button class="btn btn-primary" id="btn-enviar" onclick="enviarCorreo()">📧 Enviar reporte</button>
-            <p class="hint" style="margin-top:10px">Destinatarios: jballesteros, gherrera, mrivera, jvasquez, cvergara, mcoll, bconcha, eac, wii.nni</p>
+            <p class="hint" style="margin-top:10px">Destinatarios: jballesteros, gherrera, mrivera, jvasquez, cvergara, mcoll, bconcha, eac, teamfinanzas, wii.nni</p>
             <div id="enviar-log" class="log-box" style="display:none"></div>
           </div>
         </div>
@@ -330,9 +358,19 @@ window.switchTab = function(id, btn) {
 };
 
 function pDate(v) {
-  if (!v) return null;
+  if (!v && v !== 0) return null;
   if (v instanceof Date) return isNaN(v.getTime()) ? null : v;
-  const d = new Date(v); return isNaN(d.getTime()) ? null : d;
+  // Número Excel (días desde 1900)
+  if (typeof v === 'number') {
+    const d = new Date(Math.round((v - 25569) * 86400 * 1000));
+    return isNaN(d.getTime()) ? null : d;
+  }
+  const s = String(v).trim();
+  // DD/MM/YYYY o DD-MM-YYYY (formato chileno)
+  const mCL = s.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})/);
+  if (mCL) { const d = new Date(+mCL[3], +mCL[2]-1, +mCL[1]); return isNaN(d.getTime()) ? null : d; }
+  // ISO o cualquier otro
+  const d = new Date(s); return isNaN(d.getTime()) ? null : d;
 }
 
 function fmtFecha(v) {
@@ -481,32 +519,77 @@ window.analizar = async function() {
 
     const opAll     = leer('Incidencias Operacionales');
     const trazAll   = leer('Incidencias Trazabilidad');
-    const retAll    = leer('Incidencias Retiro', 2);
+    const retAll    = leer('Incidencias Retiro');
     const comAll    = leer('Incidencias Comercial');
+    const finAll    = leer('Incidencias Finanzas');
 
     function filtrar(rows, col, d1, d2) {
       return rows.filter(r => { const d = pDate(r[col]); return d && d >= d1 && d <= d2; });
     }
 
-    const opA  = filtrar(opAll,  'Fecha', desde, hasta);
-    const opB  = filtrar(opAll,  'Fecha', desde2, desde);
-    const trA  = filtrar(trazAll,'Fecha', desde, hasta);
-    const trB  = filtrar(trazAll,'Fecha', desde2, desde);
-    const reA  = filtrar(retAll, 'FECHA', desde, hasta);
-    const reB  = filtrar(retAll, 'FECHA', desde2, desde);
-    const coA  = filtrar(comAll, 'Fecha', desde, hasta);
-    const coB  = filtrar(comAll, 'Fecha', desde2, desde);
+    // Detecta la columna de fecha de un sheet automáticamente
+    // prueba variantes comunes; si no, busca la primera col con valor fecha
+    function autoFechaCol(rows) {
+      if (!rows.length) return null;
+      const variantes = ['Fecha','FECHA','fecha','Fecha Ingreso','FECHA INGRESO','Fecha ingreso','Date'];
+      for (const v of variantes) { if (rows[0][v] !== undefined) return v; }
+      // fallback: primera columna cuyo valor parsea como fecha
+      for (const k of Object.keys(rows[0])) { if (pDate(rows[0][k])) return k; }
+      return null;
+    }
 
-    alog(`\n📊 Resultados: Op:${opA.length} Traz:${trA.length} Retiro:${reA.length} Com:${coA.length}`, '#22c55e');
+    const opCol  = autoFechaCol(opAll)  || 'Fecha';
+    const trCol  = autoFechaCol(trazAll)|| 'Fecha';
+    const reCol  = autoFechaCol(retAll) || 'FECHA';
+    const coCol  = autoFechaCol(comAll) || 'Fecha';
+    const fiCol  = autoFechaCol(finAll) || 'Fecha';
 
-    DATA = { opA, opB, trA, trB, reA, reB, coA, coB, desde, hasta, dias };
+    alog('  Cols fecha → Op:' + opCol + '  Traz:' + trCol + '  Ret:' + reCol + '  Com:' + coCol + '  Fin:' + fiCol);
+
+    const opA  = filtrar(opAll,  opCol, desde, hasta);
+    const opB  = filtrar(opAll,  opCol, desde2, desde);
+    const trA  = filtrar(trazAll, trCol, desde, hasta);
+    const trB  = filtrar(trazAll, trCol, desde2, desde);
+    const reA  = filtrar(retAll,  reCol, desde, hasta);
+    const reB  = filtrar(retAll,  reCol, desde2, desde);
+    const coA  = filtrar(comAll,  coCol, desde, hasta);
+    const coB  = filtrar(comAll,  coCol, desde2, desde);
+    const fiA  = filtrar(finAll,  fiCol, desde, hasta);
+    const fiB  = filtrar(finAll,  fiCol, desde2, desde);
+
+    // ── DÍAS SIN INCIDENCIAS ────────────────────────────────────────────
+    function esSinIncidencias(row) {
+      return Object.values(row).some(v => typeof v === 'string' && v.toUpperCase().includes('SIN INCIDENCIAS'));
+    }
+    const opReal  = opA.filter(r => !esSinIncidencias(r));
+    const opSin   = opA.filter(esSinIncidencias);
+    const trReal  = trA.filter(r => !esSinIncidencias(r));
+    const trSin   = trA.filter(esSinIncidencias);
+    const reReal  = reA.filter(r => !esSinIncidencias(r));
+    const reSin   = reA.filter(esSinIncidencias);
+    const coReal  = coA.filter(r => !esSinIncidencias(r));
+    const coSin   = coA.filter(esSinIncidencias);
+    const opRealB = opB.filter(r => !esSinIncidencias(r));
+    const trRealB = trB.filter(r => !esSinIncidencias(r));
+    const reRealB = reB.filter(r => !esSinIncidencias(r));
+    const coRealB = coB.filter(r => !esSinIncidencias(r));
+    const fiReal  = fiA.filter(r => !esSinIncidencias(r));
+    const fiSin   = fiA.filter(esSinIncidencias);
+    const fiRealB = fiB.filter(r => !esSinIncidencias(r));
+
+    alog(`\n📊 Incidencias reales: Op:${opReal.length} Traz:${trReal.length} Retiro:${reReal.length} Com:${coReal.length} Fin:${fiReal.length}`, '#22c55e');
+    alog(`\n✅ Días sin incidencias: Op:${opSin.length} Traz:${trSin.length} Ret:${reSin.length} Com:${coSin.length}`, '#22c55e');
+
+
+    DATA = { opA: opReal, opB: opRealB, trA: trReal, trB: trRealB, reA: reReal, reB: reRealB, coA: coReal, coB: coRealB, fiA: fiReal, fiB: fiRealB, sinOp: opSin.length, sinTraz: trSin.length, sinRet: reSin.length, sinCom: coSin.length, sinFin: fiSin.length, desde, hasta, dias };
 
     // ── RENDER DASHBOARD ────────────────────────────────────
     const kpis = [
-      { label:'Operacionales', val:opA.length, ant:opB.length, bg:'#003366' },
-      { label:'Trazabilidad',  val:trA.length, ant:trB.length, bg:'#1a5276' },
-      { label:'Retiro',        val:reA.length, ant:reB.length, bg:'#1a6e3c' },
-      { label:'Comercial',     val:coA.length, ant:coB.length, bg:'#7d3c98' },
+      { label:'Operacionales', val:opReal.length, ant:opRealB.length, bg:'#003366' },
+      { label:'Trazabilidad',  val:trReal.length, ant:trRealB.length, bg:'#1a5276' },
+      { label:'Retiro',        val:reReal.length, ant:reRealB.length, bg:'#1a6e3c' },
+      { label:'Comercial',     val:coReal.length, ant:coRealB.length, bg:'#7d3c98' },
+      { label:'Finanzas',       val:fiReal.length, ant:fiRealB.length, bg:'#065f46' },
     ];
     document.getElementById('kpi-grid').innerHTML = kpis.map(k => `
       <div class="kpi-card" style="background:${k.bg}20;border:1px solid ${k.bg}60;color:#fff">
@@ -515,56 +598,106 @@ window.analizar = async function() {
         <div class="kpi-delta" style="font-size:11px;opacity:.8">${flecha(k.val,k.ant)}</div>
       </div>`).join('');
 
+    // ── RENDER DÍAS SIN INCIDENCIAS (Dashboard banner + tab badges) ──
+    const sinData = [
+      { id:'sin-op-badge',   label:'Operaciones',  n: opSin.length,  col:'#003366' },
+      { id:'sin-traz-badge', label:'Trazabilidad', n: trSin.length,  col:'#1a5276' },
+      { id:'sin-ret-badge',  label:'Retiro',        n: reSin.length,  col:'#1a6e3c' },
+      { id:'sin-com-badge',  label:'Comercial',     n: coSin.length,  col:'#7d3c98' },
+      { id:'sin-fin-badge',  label:'Finanzas',      n: fiSin.length,  col:'#065f46' },
+    ];
+    // Tab badges (Option B: each area sees only their own)
+    sinData.forEach(s => {
+      const el = document.getElementById(s.id);
+      if (!el) return;
+      if (s.n === 0) { el.style.display = 'none'; return; }
+      el.style.display = 'block';
+      el.innerHTML = `<div style="display:inline-flex;align-items:center;gap:10px;background:${s.col}20;border:1px solid ${s.col}60;border-radius:8px;padding:10px 16px">
+        <span style="font-size:20px">✅</span>
+        <div>
+          <div style="font-size:13px;font-weight:700;color:#e8eaf0">${s.n} día${s.n>1?'s':''} sin incidencias en este período</div>
+          <div style="font-size:11px;color:#9ca3af;margin-top:2px">Registros marcados como "SIN INCIDENCIAS REGISTRADAS"</div>
+        </div>
+      </div>`;
+    });
+    // Dashboard banner (Option C: global + per-category breakdown)
+    const totalSin = opSin.length + trSin.length + reSin.length + coSin.length + fiSin.length;
+    const bannerEl = document.getElementById('sin-incid-banner');
+    if (bannerEl && totalSin > 0) {
+      bannerEl.style.display = 'block';
+      const cats = sinData.filter(s => s.n > 0).map(s =>
+        `<span style="background:${s.col}30;border:1px solid ${s.col}60;color:#e8eaf0;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600">${s.label}: ${s.n}</span>`
+      ).join(' ');
+      bannerEl.innerHTML = `<div style="background:#052e16;border:1px solid #16a34a60;border-radius:8px;padding:12px 16px;display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <span style="font-size:22px">✅</span>
+        <div style="flex:1;min-width:180px">
+          <span style="font-size:13px;font-weight:700;color:#86efac">Días sin incidencias registradas</span>
+          <div style="margin-top:6px;display:flex;gap:8px;flex-wrap:wrap">${cats}</div>
+        </div>
+      </div>`;
+    } else if (bannerEl) {
+      bannerEl.style.display = 'none';
+    }
+
     setTimeout(() => {
       mkDonut('chart-donut',
-        ['Operacionales','Trazabilidad','Retiro','Comercial'],
-        [opA.length, trA.length, reA.length, coA.length]);
+        ['Operacionales','Trazabilidad','Retiro','Comercial','Finanzas'],
+        [opReal.length, trReal.length, reReal.length, coReal.length, fiReal.length]);
 
       mkGroupedBar('chart-compare',
-        ['Operacionales','Trazabilidad','Retiro','Comercial'],
+        ['Operacionales','Trazabilidad','Retiro','Comercial','Finanzas'],
         [
-          { label: 'Este período', data: [opA.length, trA.length, reA.length, coA.length], backgroundColor: '#3b82f6', borderRadius: 4 },
-          { label: 'Período anterior', data: [opB.length, trB.length, reB.length, coB.length], backgroundColor: '#374151', borderRadius: 4 }
+          { label: 'Este período', data: [opReal.length, trReal.length, reReal.length, coReal.length, fiReal.length], backgroundColor: '#3b82f6', borderRadius: 4 },
+          { label: 'Período anterior', data: [opRealB.length, trRealB.length, reRealB.length, coRealB.length, fiRealB.length], backgroundColor: '#374151', borderRadius: 4 }
         ]);
 
       // Operaciones
-      const opTipo = top5(count(opA,'Tipo de Incidencia'));
-      const opResp = top5(count(opA,'Responsable'));
-      const opCli  = top5(count(opA,'Cliente'));
+      const opTipo = top5(count(opReal,'Tipo de Incidencia'));
+      const opResp = top5(count(opReal,'Responsable'));
+      const opCli  = top5(count(opReal,'Cliente'));
       mkBar('chart-op-tipo', opTipo.map(x=>x[0]), opTipo.map(x=>x[1]), 'Incidencias');
       mkBar('chart-op-resp', opResp.map(x=>x[0]), opResp.map(x=>x[1]), 'Incidencias');
       mkBar('chart-op-cli',  opCli.map(x=>x[0]),  opCli.map(x=>x[1]),  'Incidencias');
 
       // Trazabilidad
-      const trEst  = top5(count(trA,'Estado'));
-      const trRes  = top5(count(trA,'Resolución'));
+      const trEst  = top5(count(trReal,'Estado'));
+      const trRes  = top5(count(trReal,'Resolución'));
       mkBar('chart-traz-estado', trEst.map(x=>x[0]), trEst.map(x=>x[1]), 'Incidencias');
       mkBar('chart-traz-resol',  trRes.map(x=>x[0]), trRes.map(x=>x[1]), 'Incidencias');
 
       // Retiro
-      const reResp = top5(count(reA,'RESPONSABLE'));
-      const reCond = top5(count(reA,'CONDUCTOR'));
-      const reCli  = top5(count(reA,'CLIENTE'));
+      const reResp = top5(count(reReal,'RESPONSABLE'));
+      const reCond = top5(count(reReal,'CONDUCTOR'));
+      const reCli  = top5(count(reReal,'CLIENTE'));
       mkBar('chart-ret-resp', reResp.map(x=>x[0]), reResp.map(x=>x[1]), 'Incidencias');
       mkBar('chart-ret-cond', reCond.map(x=>x[0]), reCond.map(x=>x[1]), 'Incidencias');
       mkBar('chart-ret-cli',  reCli.map(x=>x[0]),  reCli.map(x=>x[1]),  'Incidencias');
 
       // Comercial
-      const coArea = top5(count(coA,'Área'));
-      const coTipo = top5(count(coA,'Tipo de incidencia'));
+      const coArea = top5(count(coReal,'Área'));
+      const coTipo = top5(count(coReal,'Tipo de incidencia'));
       mkBar('chart-com-area', coArea.map(x=>x[0]), coArea.map(x=>x[1]), 'Incidencias');
       mkBar('chart-com-tipo', coTipo.map(x=>x[0]), coTipo.map(x=>x[1]), 'Incidencias');
+
+      // Finanzas
+      const fiTipo = top5(count(fiReal,'Tipo'));
+      const fiResp = top5(count(fiReal,'Responsable'));
+      const fiCli  = top5(count(fiReal,'Cliente'));
+      mkBar('chart-fin-tipo', fiTipo.map(x=>x[0]), fiTipo.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-fin-resp', fiResp.map(x=>x[0]), fiResp.map(x=>x[1]), 'Incidencias');
+      mkBar('chart-fin-cli',  fiCli.map(x=>x[0]),  fiCli.map(x=>x[1]),  'Incidencias');
     }, 100);
 
     // Tablas detalle
-    renderTabla('tbody-op',   opA, ['Fecha','Tipo de Incidencia','Cliente','Responsable'], 'op-count');
-    renderTabla('tbody-traz', trA, ['Fecha','Clientes','Estado','Observaciones'], 'traz-count');
-    renderTabla('tbody-ret',  reA, ['FECHA','CLIENTE','CONDUCTOR','RESPONSABLE','SITUACIÓN ESPECIFÍCA'], 'ret-count');
-    renderTabla('tbody-com',  coA, ['Fecha','Área','Tipo de incidencia','Responsable','Detalle'], 'com-count');
+    renderTabla('tbody-op',   opReal, ['Fecha','Tipo de Incidencia','Cliente','Responsable'], 'op-count');
+    renderTabla('tbody-traz', trReal, ['Fecha','Clientes','Estado','Observaciones'], 'traz-count');
+    renderTabla('tbody-ret',  reReal, ['FECHA','CLIENTE','CONDUCTOR','RESPONSABLE','SITUACIÓN ESPECIFÍCA'], 'ret-count');
+    renderTabla('tbody-com',  coReal, ['Fecha','Área','Tipo de incidencia','Responsable','Detalle'], 'com-count');
+    renderTabla('tbody-fin',  fiReal, ['Fecha','Tipo','Cliente','Responsable','Detalle'], 'fin-count');
 
     document.getElementById('incid-main').style.display = 'block';
     document.getElementById('btn-guardar').style.display = '';
-    document.getElementById('estado-analisis').textContent = `✅ ${opA.length+trA.length+reA.length+coA.length} incidencias analizadas`;
+    document.getElementById('estado-analisis').textContent = `✅ ${opReal.length+trReal.length+reReal.length+coReal.length+fiReal.length} incidencias analizadas`;
     logEl.style.display = 'none';
 
   } catch(e) {
@@ -614,7 +747,7 @@ window.guardarSnapshot = async function() {
 // ── ENVIAR CORREO ─────────────────────────────────────────────
 window.enviarCorreo = async function() {
   if (!DATA) { alert('Primero analiza los datos.'); return; }
-  const { opA, opB, trA, trB, reA, reB, coA, coB, desde, hasta } = DATA;
+  const { opA, opB, trA, trB, reA, reB, coA, coB, fiA, fiB, desde, hasta } = DATA;
   const btn = document.getElementById('btn-enviar');
   const log = document.getElementById('enviar-log');
   btn.disabled = true; log.style.display = 'block'; log.innerHTML = '';
@@ -649,10 +782,11 @@ ${comentario?`<div style="background:#fef9e7;border-left:4px solid #f39c12;paddi
   <p style="margin:0 0 4px;font-size:11px;color:#888;font-weight:bold">COMENTARIO DE ${remitente.toUpperCase()}</p>
   <p style="margin:0;font-size:13px">${comentario}</p></div>`:''}
 <table style="width:100%;margin:15px 0;border-collapse:collapse"><tr>
-  <td style="background:#003366;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${opA.length}</div><div>Operacionales</div><div style="font-size:11px;margin-top:4px">${fl(opA.length,opB.length)}</div></td><td style="width:1%"></td>
-  <td style="background:#1a5276;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${trA.length}</div><div>Trazabilidad</div><div style="font-size:11px;margin-top:4px">${fl(trA.length,trB.length)}</div></td><td style="width:1%"></td>
-  <td style="background:#1a6e3c;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${reA.length}</div><div>Retiro</div><div style="font-size:11px;margin-top:4px">${fl(reA.length,reB.length)}</div></td><td style="width:1%"></td>
-  <td style="background:#7d3c98;color:white;padding:12px;border-radius:4px;text-align:center;width:22%"><div style="font-size:28px;font-weight:bold">${coA.length}</div><div>Comercial</div><div style="font-size:11px;margin-top:4px">${fl(coA.length,coB.length)}</div></td>
+  <td style="background:#003366;color:white;padding:12px;border-radius:4px;text-align:center;width:18%"><div style="font-size:28px;font-weight:bold">${opA.length}</div><div>Operacionales</div><div style="font-size:11px;margin-top:4px">${fl(opA.length,opB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#1a5276;color:white;padding:12px;border-radius:4px;text-align:center;width:18%"><div style="font-size:28px;font-weight:bold">${trA.length}</div><div>Trazabilidad</div><div style="font-size:11px;margin-top:4px">${fl(trA.length,trB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#1a6e3c;color:white;padding:12px;border-radius:4px;text-align:center;width:18%"><div style="font-size:28px;font-weight:bold">${reA.length}</div><div>Retiro</div><div style="font-size:11px;margin-top:4px">${fl(reA.length,reB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#7d3c98;color:white;padding:12px;border-radius:4px;text-align:center;width:18%"><div style="font-size:28px;font-weight:bold">${coA.length}</div><div>Comercial</div><div style="font-size:11px;margin-top:4px">${fl(coA.length,coB.length)}</div></td><td style="width:1%"></td>
+  <td style="background:#065f46;color:white;padding:12px;border-radius:4px;text-align:center;width:18%"><div style="font-size:28px;font-weight:bold">${fiA.length}</div><div>Finanzas</div><div style="font-size:11px;margin-top:4px">${fl(fiA.length,fiB.length)}</div></td>
 </tr></table>
 <h3 style="color:#003366;margin-top:25px">🔧 Incidencias Operacionales</h3>
 ${rankHTML(top5(count(opA,'Tipo de Incidencia')),'📊 Por tipo')}${rankHTML(top5(count(opA,'Responsable')),'👤 Por responsable')}${rankHTML(top5(count(opA,'Cliente')),'🏢 Por cliente')}
@@ -666,6 +800,9 @@ ${rankHTML(top5(count(reA,'RESPONSABLE')),'👤 Por responsable')}${rankHTML(top
 <h3 style="color:#003366;margin-top:25px">💼 Incidencias Comercial</h3>
 ${rankHTML(top5(count(coA,'Área')),'📂 Por área')}${rankHTML(top5(count(coA,'Tipo de incidencia')),'📊 Por tipo')}
 <br>${tablaHTML(coA,['Fecha','Área','Tipo de incidencia','Responsable','Detalle'],['Fecha','Área','Tipo','Responsable','Detalle'])}
+<h3 style="color:#003366;margin-top:25px">💰 Incidencias Finanzas</h3>
+${rankHTML(top5(count(fiA,'Tipo')),'📊 Por tipo')}${rankHTML(top5(count(fiA,'Responsable')),'👤 Por responsable')}${rankHTML(top5(count(fiA,'Cliente')),'🏢 Por cliente')}
+<br>${tablaHTML(fiA,['Fecha','Tipo','Cliente','Responsable','Detalle'],['Fecha','Tipo','Cliente','Responsable','Detalle'])}
 <hr style="margin-top:30px;border:none;border-top:1px solid #ddd">
 <p style="color:#aaa;font-size:10px">Generado automáticamente · Libro de Incidencias 2026 · Recíbelo · ${hoyStr}</p></div>`;
 
@@ -682,7 +819,7 @@ ${rankHTML(top5(count(coA,'Área')),'📂 Por área')}${rankHTML(top5(count(coA,
           {emailAddress:{address:'mrivera@recibelo.cl'}},{emailAddress:{address:'jvasquez@recibelo.cl'}},
           {emailAddress:{address:'cvergara@recibelo.cl'}},{emailAddress:{address:'mcoll@recibelo.cl'}},
           {emailAddress:{address:'bconcha@recibelo.cl'}},{emailAddress:{address:'eac@recibelo.cl'}},
-          {emailAddress:{address:'wii.nni@gmail.com'}}
+          {emailAddress:{address:'teamfinanzas@recibelo.cl'}},{emailAddress:{address:'wii.nni@gmail.com'}}
         ]
       }})
     });

@@ -1,0 +1,623 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ecosistema Falabella Directo | Recibelo</title>
+<style>
+:root{
+  --green:#00a650;--green-l:#e8f7ef;--green-d:#007a3d;
+  --purple:#7c3aed;--purple-l:#f3eeff;
+  --navy:#0f172a;--text:#1e293b;--muted:#64748b;
+  --bg:#f8fafc;--white:#fff;--border:#e2e8f0;
+  --red:#ef4444;--red-l:#fef2f2;
+  --amber:#f59e0b;--amber-l:#fffbeb;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+
+/* HEADER */
+.hdr{background:var(--white);border-bottom:1px solid var(--border);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.hdr-brand{display:flex;align-items:center;gap:14px}
+.logo{height:30px;object-fit:contain}
+.hdr-sep{width:1px;height:26px;background:var(--border)}
+.hdr-title{font-size:15px;font-weight:800;color:var(--navy)}
+.hdr-sub{font-size:11px;color:var(--muted);margin-top:2px}
+.fala-badge{background:var(--green);color:#fff;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.3px}
+.powered{font-size:12px;color:var(--muted)}
+.powered strong{color:var(--purple)}
+
+/* TABS */
+.tab-bar{background:var(--white);border-bottom:1px solid var(--border);padding:0 28px;display:flex}
+.tab-btn{padding:13px 22px;font-size:13px;font-weight:600;color:var(--muted);border:none;background:none;cursor:pointer;border-bottom:3px solid transparent;transition:all .2s;white-space:nowrap}
+.tab-btn:hover{color:var(--text)}
+.tab-btn.active{color:var(--green);border-bottom-color:var(--green)}
+
+/* LAYOUT */
+.wizard-wrap{display:flex;min-height:calc(100vh - 118px - 62px)}
+.sidebar{width:250px;flex-shrink:0;background:var(--white);border-right:1px solid var(--border);padding:20px 14px;position:sticky;top:118px;height:calc(100vh - 118px - 62px);overflow-y:auto}
+.sidebar-ttl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.1em;text-transform:uppercase;margin-bottom:10px;padding:0 6px}
+.snav{display:flex;align-items:center;gap:10px;padding:9px 8px;border-radius:8px;cursor:pointer;transition:background .15s;margin-bottom:2px}
+.snav:hover{background:var(--bg)}
+.snav.active{background:var(--green-l)}
+.snav.done .snum{background:var(--green);color:#fff}
+.snav.active .snum{background:var(--green);color:#fff}
+.snum{width:26px;height:26px;border-radius:50%;background:var(--border);color:var(--muted);font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;transition:all .2s}
+.snav.done .snum::after{content:''}
+.slabel{font-size:12px;color:var(--muted);line-height:1.3}
+.snav.active .slabel{color:var(--green-d);font-weight:600}
+.snav.done .slabel{color:var(--text)}
+
+/* CONTENT */
+.step-col{flex:1;padding:28px 32px}
+.prog-wrap{background:var(--border);border-radius:99px;height:4px;margin-bottom:6px}
+.prog-fill{background:var(--green);height:100%;border-radius:99px;transition:width .4s}
+.prog-lbl{font-size:11px;color:var(--muted);margin-bottom:22px}
+
+/* STEP CARD */
+.scard{background:var(--white);border:1px solid var(--border);border-radius:16px;padding:36px;box-shadow:0 2px 10px rgba(0,0,0,.04)}
+.sico{font-size:44px;display:block;margin-bottom:14px}
+.stag{display:inline-block;background:var(--green-l);color:var(--green-d);font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.4px;text-transform:uppercase;margin-bottom:10px}
+.stitle{font-size:24px;font-weight:800;color:var(--navy);line-height:1.2;margin-bottom:8px}
+.ssub{font-size:14px;color:var(--muted);margin-bottom:26px;line-height:1.55}
+.sec-lbl{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin:24px 0 10px}
+.sep{height:1px;background:var(--border);margin:22px 0}
+
+/* CARDS ROW */
+.cards3{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:20px}
+.mc{background:var(--bg);border:1px solid var(--border);border-radius:12px;padding:16px}
+.mc-ico{font-size:26px;margin-bottom:8px}
+.mc-t{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:5px}
+.mc-d{font-size:12px;color:var(--muted);line-height:1.45}
+
+/* CHECKLISTS */
+.cklist{list-style:none;display:flex;flex-direction:column;gap:8px}
+.cklist li{display:flex;gap:10px;font-size:13px;line-height:1.45}
+.cklist li::before{content:'✅';flex-shrink:0;font-size:14px}
+.cklist.warn li::before{content:'⚠️'}
+.cklist.info li::before{content:'ℹ️'}
+.cklist.num{counter-reset:nc}
+.cklist.num li{counter-increment:nc}
+.cklist.num li::before{content:counter(nc);width:22px;height:22px;background:var(--green);color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0;margin-top:1px}
+.cklist.num li.hi::before{background:var(--purple)}
+.cklist.num li.hi{font-weight:700;color:var(--purple)}
+
+/* ALERTS */
+.alert{border-radius:10px;padding:14px 18px;display:flex;gap:12px;align-items:flex-start;margin:16px 0}
+.alert-r{background:var(--red-l);border:1px solid #fca5a5}
+.alert-g{background:var(--green-l);border:1px solid #86efac}
+.alert-a{background:var(--amber-l);border:1px solid #fcd34d}
+.alert-p{background:var(--purple-l);border:1px solid #c4b5fd}
+.alert-ico{font-size:18px;flex-shrink:0;margin-top:1px}
+.alert-body{font-size:13px;line-height:1.5}
+.alert-body strong{display:block;margin-bottom:3px;font-size:13px;font-weight:700}
+
+/* FLOW */
+.flow{display:flex;align-items:center;overflow-x:auto;padding-bottom:6px;margin:16px 0;gap:0}
+.fstep{background:var(--bg);border:1px solid var(--border);border-radius:10px;padding:12px 14px;text-align:center;min-width:110px;flex-shrink:0}
+.fstep .fi{font-size:22px;margin-bottom:5px}
+.fstep .fl{font-size:11px;font-weight:600;color:var(--text);line-height:1.3}
+.farrow{color:var(--muted);font-size:16px;padding:0 4px;flex-shrink:0}
+
+/* BIG STAT */
+.bigstat{text-align:center;background:var(--green-l);border:2px solid var(--green);border-radius:14px;padding:22px;margin:18px 0}
+.bigstat .bn{font-size:52px;font-weight:900;color:var(--green);line-height:1}
+.bigstat .bl{font-size:15px;font-weight:700;color:var(--navy);margin-top:6px}
+.bigstat .bs{font-size:12px;color:var(--muted);margin-top:3px}
+
+/* STARS TABLE */
+.stbl{width:100%;border-collapse:collapse;margin:12px 0;font-size:13px;border-radius:10px;overflow:hidden}
+.stbl th{background:var(--navy);color:#fff;padding:10px 13px;text-align:left;font-size:10px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+.stbl td{padding:10px 13px;border-bottom:1px solid var(--border);vertical-align:middle}
+.stbl tr.hi td{background:var(--green-l);font-weight:600}
+.stbl tr:last-child td{border-bottom:none}
+.stars{color:#f59e0b;font-size:15px;letter-spacing:-1px}
+
+/* INDICATORS */
+.inds{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:12px;margin:14px 0}
+.ind{border-radius:10px;padding:14px;border:1px solid var(--border);background:var(--bg)}
+.ind.crit{border-color:var(--red);background:var(--red-l)}
+.ind-lbl{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin-bottom:5px}
+.ind.crit .ind-lbl{color:var(--red)}
+.ind-t{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:3px}
+.ind-d{font-size:12px;color:var(--muted);line-height:1.4}
+
+/* TAGS */
+.tag-g{background:var(--green-l);color:var(--green-d);border:1px solid #86efac;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;display:inline-block;margin:2px}
+.tag-r{background:var(--red-l);color:var(--red);border:1px solid #fca5a5;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;display:inline-block;margin:2px}
+.tag-p{background:var(--purple-l);color:var(--purple);border:1px solid #c4b5fd;border-radius:6px;padding:2px 8px;font-size:11px;font-weight:600;display:inline-block;margin:2px}
+
+/* FOOTER NAV */
+.nav-ft{background:var(--white);border-top:1px solid var(--border);padding:14px 32px;display:flex;align-items:center;gap:14px;position:sticky;bottom:0;z-index:99}
+.btn-n{padding:10px 22px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .15s}
+.btn-prev{background:var(--bg);color:var(--text);border:1px solid var(--border)}
+.btn-prev:hover{background:var(--border)}
+.btn-next{background:var(--green);color:#fff}
+.btn-next:hover{background:var(--green-d)}
+.btn-n:disabled{opacity:.35;cursor:default;pointer-events:none}
+.nav-info{flex:1;text-align:center;font-size:12px;color:var(--muted);font-weight:500}
+
+/* MOBILE */
+@media(max-width:768px){
+  .sidebar{display:none}
+  .step-col{padding:14px}
+  .scard{padding:20px}
+  .cards3{grid-template-columns:1fr}
+  .stitle{font-size:20px}
+  .tab-btn{padding:12px 14px;font-size:12px}
+  .nav-ft{padding:12px 14px}
+  .hdr{padding:12px 16px}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="hdr">
+  <div class="hdr-brand">
+    <img src="../recibelo.cl2.png" alt="Recibelo" class="logo" onerror="this.style.display='none'">
+    <div class="hdr-sep"></div>
+    <div>
+      <div class="hdr-title">Ecosistema <span class="fala-badge">Falabella Directo</span></div>
+      <div class="hdr-sub">Guia operativa completa para sellers</div>
+    </div>
+  </div>
+  <div class="powered">Powered by <strong>Recibelo</strong></div>
+</header>
+
+<!-- TABS -->
+<div class="tab-bar">
+  <button class="tab-btn active" id="tab-nuevo" onclick="switchWizard('nuevo')">Nuevo en Falabella Directo</button>
+  <button class="tab-btn" id="tab-cambio" onclick="switchWizard('cambio')">Cambio de Courier</button>
+</div>
+
+<!-- WIZARD -->
+<div class="wizard-wrap">
+  <aside class="sidebar" id="sidebar"></aside>
+  <div class="step-col">
+    <div class="prog-wrap"><div class="prog-fill" id="prog-fill"></div></div>
+    <div class="prog-lbl" id="prog-lbl"></div>
+    <div id="step-area"></div>
+  </div>
+</div>
+
+<!-- NAV FOOTER -->
+<footer class="nav-ft">
+  <button class="btn-n btn-prev" id="btn-prev" onclick="changeStep(-1)">Anterior</button>
+  <div class="nav-info" id="nav-info"></div>
+  <button class="btn-n btn-next" id="btn-next" onclick="changeStep(1)">Siguiente</button>
+</footer>
+
+<script>
+// ─── STEP DATA ──────────────────────────────────────────────────────────────
+
+const STEPS_NUEVO = [
+{
+  tag:'Paso 1 de 6',
+  icon:'',
+  title:'Bienvenido al modelo mas directo de Falabella',
+  sub:'Vende más. Entrega mejor. Sin intermediarios. Tu producto llega al cliente final con la infraestructura logística de Recibelo y la vitrina del marketplace más grande de Chile.',
+  html:`
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Tu Operacion</div><div class="mc-d">Tu preparas, tu controlas el stock, tu defines la capacidad diaria.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Recibelo</div><div class="mc-d">El puente logistico. Retira en tu bodega y entrega al cliente final en la RM.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Falabella.com</div><div class="mc-d">El marketplace. Millones de compradores activos. Tu catálogo en primera fila.</div></div>
+  </div>
+  <div class="sec-lbl">Que ganas con este modelo</div>
+  <ul class="cklist">
+    <li>Sincronización automática de inventario con Falabella , sin desincronizaciones manuales</li>
+    <li>Rastreo en tiempo real para el comprador (estados automaticos via API)</li>
+    <li>Tarifas preferenciales de envio gracias a la alianza estrategica Recibelo-Falabella</li>
+    <li>Seguro de carga incluido en cada despacho</li>
+    <li>Logística inversa unificada, devoluciones gestiónadas por Recibelo</li>
+    <li>Soporte directo con ejecutivos especializados del modelo Directo</li>
+    <li>Acceso a promociones exclusivas de Falabella según tu calificación FPLUS</li>
+  </ul>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>El modelo Directo es distinto al modelo estándar</strong>Tú envías directamente desde tu bodega al cliente. No pasas por centros de Falabella. Tienes más control, y más responsabilidad operaciónal.</div>
+  </div>
+  `
+},
+{
+  tag:'Paso 2 de 6',
+  icon:'',
+  title:'Del clic del cliente a su puerta, en 5 pasos',
+  sub:'Cada venta genera un flujo automatizado entre tu Seller Center, Recibelo y el cliente final. Esto es lo que ocurre desde que alguien compra tu producto.',
+  html:`
+  <div class="flow">
+    <div class="fstep"><div class="fi"></div><div class="fl">Cliente compra en Falabella.com</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Seller Center te notifica + etiqueta lista</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Preparas y entregas a Recibelo</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Recibelo despacha al cliente</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Entregado + foto + hora exacta</div></div>
+  </div>
+  <div class="sec-lbl">Estados en tiempo real que ves en Seller Center</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Pedido retirado</div><div class="mc-d">Recibelo confirmo recogida en tu bodega.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">En deposito</div><div class="mc-d">Llego al centro de clasificacion de Recibelo.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">En ruta</div><div class="mc-d">Salio en camion hacia el cliente final.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Completado</div><div class="mc-d">Entregado. Foto + hora exacta disponible.</div></div>
+  </div>
+  <div class="sec-lbl">Sobre las etiquetas</div>
+  <ul class="cklist">
+    <li>Falabella GENERA automáticamente la etiqueta con guia de Recibelo embebida</li>
+    <li>Tu descargars la etiqueta desde Seller Center en seccion Ordenes > Descargar Etiqueta</li>
+    <li>La etiqueta contiene codigo de seguimiento, datos del cliente, codigo de barras de Recibelo</li>
+    <li>Si la API cae: imprime etiqueta manual desde Seller Center e informa a Recibelo por canal directo</li>
+  </ul>
+  <div class="sep"></div>
+  <div class="sec-lbl">Gestiona las devoluciones</div>
+  <ul class="cklist">
+    <li>El cliente solicita devolucion en Falabella (no en Recibelo)</li>
+    <li>Tu informas a Recibelo el ID de la venta o guia a devolver por canal directo</li>
+    <li>Recibelo retira desde el domicilio del cliente al dia siguiente</li>
+    <li>El flujo es: En almacen (logística inversa) → En devolucion → Devuelto a tu bodega</li>
+  </ul>
+  `
+},
+{
+  tag:'Paso 3 de 6',
+  icon:'',
+  title:'La regla de oro: el SLA de 1 hora',
+  sub:'Esta es la regla mas importante del modelo. Si la cumples bien, mantendras una calificación alta y acceso a todos los beneficios. Si falla, el modelo puede desactivarse.',
+  html:`
+  <div class="bigstat">
+    <div class="bn">1 hora</div>
+    <div class="bl">Tiempo maximo para preparar y entregar a Recibelo</div>
+    <div class="bs">Desde el corte de ventas hasta que Recibelo retira en tu bodega</div>
+  </div>
+  <div class="sec-lbl">Como funciona el horario de corte</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Corte de venta</div><div class="mc-d">Tipicamente entre 12:00 y 13:00. Se acuerda con Recibelo según tu operación.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Tu ventana: 1 hora</div><div class="mc-d">Post-corte tienes 1 hora para preparar TODOS los pedidos del dia y entregarlos a Recibelo.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Espera del driver</div><div class="mc-d">El conductor de Recibelo espera maximo 20 minutos en tu bodega. Coordina para estar listo.</div></div>
+  </div>
+  <div class="alert alert-r">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Umbral critico: 90% de puntualidad</strong>Si tu porcentaje de envíos a tiempo cae bajo el 90%, el modelo Falabella Directo se DESACTIVA automáticamente. Sin aviso previo. Sin periodo de gracia.</div>
+  </div>
+  <div class="alert alert-a">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Las ventas no preparadas también penalizan</strong>Si olvidas preparar un pedido dentro de la ventana de 1 hora post-corte, Falabella lo detecta automáticamente y penaliza tu score FPLUS. Establece un proceso de picking que no dependa de memoria.</div>
+  </div>
+  <div class="sec-lbl">Buenas practicas</div>
+  <ul class="cklist">
+    <li>Configura una cuota diaria conservadora que tu operación pueda cumplir consistentemente</li>
+    <li>Si configuras 100 envíos/dia, asegurate de tener stock real para 100</li>
+    <li>Comunica a Recibelo CON ANTICIPACION si habra cambios de capacidad</li>
+    <li>Recibelo opera sábados, domingos y feriados (excepto irrenunciables)</li>
+    <li>Solo RM urbano: fuera de la RM el modelo no aplica, se usa envio estándar Falabella</li>
+  </ul>
+  `
+},
+{
+  tag:'Paso 4 de 6',
+  icon:'',
+  title:'FPLUS: tu calificación y sus beneficios',
+  sub:'FPLUS es el sistema de calificación de Falabella que mide tu desempeño operacional. Se recalcula DIARIAMENTE. Tú tienes el control para mejorar o mantener tu posición, y tus tarifas dependen de ello.',
+  html:`
+  <div class="sec-lbl">Los 4 niveles de calificación</div>
+  <table class="stbl">
+    <thead><tr><th>Calificación</th><th>Puntualidad</th><th>Ahorro en tarifa</th><th>Envío gratis</th><th>Estado</th></tr></thead>
+    <tbody>
+      <tr class="hi"><td><span class="stars">★★★★★</span> 5 estrellas</td><td>≥95%</td><td>Hasta 50%</td><td>Sí (Falabella subsidia)</td><td><span class="tag-g">Óptimo</span></td></tr>
+      <tr class="hi"><td><span class="stars">★★★★</span> 4 estrellas</td><td>90%–94.99%</td><td>Hasta 40%</td><td>Sí (Falabella subsidia)</td><td><span class="tag-g">Objetivo práctico</span></td></tr>
+      <tr><td><span class="stars">★★★</span> 3 estrellas</td><td>Variable</td><td>Hasta 25%</td><td>No</td><td><span class="tag-p">Vigilar</span></td></tr>
+      <tr><td><span class="stars">★★</span> 2 estrellas</td><td>Bajo</td><td>Sin descuento</td><td>No</td><td><span class="tag-r">Riesgo desactivación</span></td></tr>
+    </tbody>
+  </table>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Con 4 estrellas accedes a TODOS los beneficios principales</strong>No necesitas 5 estrellas. El objetivo práctico realista es 4 estrellas (90%+ puntualidad). 5 estrellas ofrece visibilidad extra y promociones premium adicionales.</div>
+  </div>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Los envíos gratis NO te cuestan a ti</strong>Cuando Falabella activa la promoción de envío gratis, ELLOS subsidian el costo del transporte. Tú no absorbes ese costo. Aplica en la RM y en períodos específicos definidos por Falabella.</div>
+  </div>
+  <div class="sec-lbl">Qué ganas además del descuento en tarifa</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Promoción CMR</div><div class="mc-d">Sellers 4–5 estrellas acceden a "Oportunidad Única CMR" con hasta 32% de descuentos.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Productos patrocinados</div><div class="mc-d">3–4–5 estrellas: pago por clic con posicionamiento prioritario. Sin inversión mínima.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Sello de confianza</div><div class="mc-d">4–5 estrellas: "Recomendado por Falabella" visible en tu catálogo. Más conversiones.</div></div>
+  </div>
+  <div class="alert alert-a">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Sin multas ni penalizaciones económicas</strong>La penalización por bajo desempeño NO es económica. No hay descuentos en liquidación ni cobros adicionales. La penalización es pérdida de beneficios y visibilidad, no dinero que te cobren.</div>
+  </div>
+  <div class="sep"></div>
+  <div class="sec-lbl">Qué mide Falabella para calcular tu puntaje</div>
+  <div class="inds">
+    <div class="ind crit">
+      <div class="ind-lbl">Indicador 1 — CRÍTICO</div>
+      <div class="ind-t">Envíos a tiempo</div>
+      <div class="ind-d">% de pedidos entregados dentro del plazo. Si baja de 90%, DESACTIVACIÓN inmediata.</div>
+    </div>
+    <div class="ind">
+      <div class="ind-lbl">Indicador 2</div>
+      <div class="ind-t">Cancelaciones</div>
+      <div class="ind-d">% de pedidos cancelados post-compra. Señala problemas de inventario. Meta: bajo 5%.</div>
+    </div>
+    <div class="ind">
+      <div class="ind-lbl">Indicador 3</div>
+      <div class="ind-t">Reclamos</div>
+      <div class="ind-d">% de pedidos con problemas reportados. Refleja calidad de embalaje y descripción. Meta: bajo 4%.</div>
+    </div>
+    <div class="ind crit">
+      <div class="ind-lbl">Factor adicional — CRÍTICO</div>
+      <div class="ind-t">Ventas no preparadas</div>
+      <div class="ind-d">% de pedidos que olvidaste preparar en la ventana de 1 hora. Falabella lo detecta automáticamente.</div>
+    </div>
+  </div>
+  <div class="sec-lbl">Cómo recuperarte si baja tu puntaje</div>
+  <ul class="cklist num">
+    <li><span>Diagnostica: entra a Seller Center > Informes y Estadísticas > Dashboard FPLUS. Identifica qué indicador está bajo.</span></li>
+    <li><span>Ejecuta acciones correctivas según el indicador débil (capacidad, inventario, embalaje, picking).</span></li>
+    <li><span>Monitorea: el dashboard se actualiza DIARIAMENTE. Cambios significativos se ven en 7–14 días.</span></li>
+    <li><span>Si el modelo se desactivó: lleva puntualidad a 90%+ y solicita reactivación en Seller Center (24–48 hs).</span></li>
+  </ul>
+  `
+},
+{
+  tag:'Paso 5 de 6',
+  icon:'',
+  title:'Tecnologia: Recibelo gestióna la integración',
+  sub:'No necesitas programar nada. Recibelo se integra directamente con Falabella via API y gestióna el flujo de datos en tiempo real. Tú solo necesitas operar.',
+  html:`
+  <div class="sec-lbl">Como funciona la API</div>
+  <ul class="cklist">
+    <li>Recibelo GENERA Y GESTIONA tu token API centralmente, tú no lo generas</li>
+    <li>Con el token, tus sistemas internos (ERP/PMS) pueden conectarse a la API de Recibelo</li>
+    <li>Flujo: Tu ERP envía pedido → API Recibelo → Descarga etiqueta → Se integra en tu picking</li>
+  </ul>
+  <div class="sec-lbl">Flujo de datos en tiempo real (Webhooks)</div>
+  <div class="flow">
+    <div class="fstep"><div class="fi"></div><div class="fl">Tu ERP / PMS</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">API Recibelo</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Falabella Seller Center</div></div>
+    <div class="farrow">→</div>
+    <div class="fstep"><div class="fi"></div><div class="fl">Notificacion al cliente</div></div>
+  </div>
+  <div class="alert alert-p">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Informacion enviada en cada actualización de estado</strong>Foto de entrega · Hora exacta · Fecha · Estado del envio · Numero de reintento (si aplica). Todo automatico, sin intervencion tuya.</div>
+  </div>
+  <div class="sec-lbl">Seguridad del token</div>
+  <ul class="cklist warn">
+    <li>El token API es confidencial. Recibelo lo resguarda, tu no lo compartes con nadie.</li>
+    <li>Si necesitas cambiar el token o detectas una brecha de seguridad, contacta inmediatamente a Recibelo.</li>
+  </ul>
+  <div class="sep"></div>
+  <div class="sec-lbl">Protocolo de contingencia: si la API de Recibelo cae</div>
+  <ul class="cklist num">
+    <li><span>Imprime la etiqueta directamente desde Seller Center Falabella (funcion "Imprimir Etiqueta Manual")</span></li>
+    <li><span>Embala el pedido normalmente y pega la etiqueta impresa</span></li>
+    <li><span>Contacta a Recibelo por CANAL DIRECTO (telefono/chat) e informa que ventas se retiran manual</span></li>
+    <li><span>Recibelo integra manualmente esos envíos en su sistema, sin impacto en el cliente</span></li>
+  </ul>
+  `
+},
+{
+  tag:'Paso 6 de 6',
+  icon:'',
+  title:'Activacion en Seller Center: paso a paso',
+  sub:'La activación del modelo Falabella Directo con Recibelo se hace desde tu Seller Center. Son 14 pasos. Siguelos en orden y Falabella iniciara la validación interna.',
+  html:`
+  <ul class="cklist num">
+    <li><span>Ingresa a Seller Center Falabella y selecciona tu cuenta</span></li>
+    <li><span>Dirigete a "Envios y Capacidad"</span></li>
+    <li><span>Verifica que la bodega seleccionada sea la correcta (vista inferior)</span></li>
+    <li><span>Entre los tres modelos disponibles, selecciona "Envio Directo por Seller" (estara inactivo)</span></li>
+    <li><span>Revisa el resumen del modelo y selecciona "Quiero explorar este modelo"</span></li>
+    <li><span>Selecciona la bodega desde la cual mantendras stock para el Modelo Directo</span></li>
+    <li class="hi"><span>Selecciona "Flota Externa" y busca "Recibelo"</span></li>
+    <li><span>Confirma el correo de contacto. IMPORTANTE: este recibe todos los levantamientos de incidencias de Falabella</span></li>
+    <li><span>Revisa las zonas de envio preconfiguradas (Recibelo + Falabella)</span></li>
+    <li><span>Configura: dias de trabajo, capacidad diaria y tallas logísticas (maximo XL)</span></li>
+    <li><span>Configura el corte de venta (rango típico 12:00-13:00, consulta con Recibelo tu horario específico)</span></li>
+    <li><span>Confirma que los dias de preparacion sean 0 (entrega el mismo dia)</span></li>
+    <li><span>Verifica que toda la configuración es correcta y procede a continuar</span></li>
+    <li><span>Falabella inicia validación interna, el ejecutivo Recibelo coordina la activación final</span></li>
+  </ul>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Después de enviar</strong>Falabella valida internamente tu configuración. El equipo de Recibelo te contacta para coordinar la activación final.</div>
+  </div>
+  <div class="alert alert-a">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>El paso 7 es clave</strong>Al seleccionar "Flota Externa" → "Recibelo", le indicas a Falabella quien sera tu courier. Si seleccionas otro, la integración no funciona. Verifica este paso con cuidado.</div>
+  </div>
+  <div class="sec-lbl">Soporte disponible durante la activación</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Sergio Diaz</div><div class="mc-d">Leader Sellers y Couriers Modelo Directo</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Karen Tobar</div><div class="mc-d">Support Leader Sellers y Couriers</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Antonia Cuadra</div><div class="mc-d">Leader Integracion Modelo Directo</div></div>
+  </div>
+  `
+},
+];
+
+const STEPS_CAMBIO = [
+{
+  tag:'Paso 1 de 3',
+  icon:'',
+  title:'Por que migrar a Recibelo',
+  sub:'Ya operas en Falabella Directo con otro courier. Migrar a Recibelo no interrumpe tu operación, solo cambia quién hace el transporte, y a mejor.',
+  html:`
+  <div class="sec-lbl">Que ganas al migrar</div>
+  <ul class="cklist">
+    <li>Integracion API ya establecida con Falabella, Recibelo es operador nativo del modelo Directo</li>
+    <li>Equipo dedicado con ejecutivos especializados en Falabella Directo (Sergio, Karen, Antonia)</li>
+    <li>Tarifas preferenciales por el modelo, con descuentos según tu calificación FPLUS</li>
+    <li>Soporte directo de altos ejecutivos del modelo, no un call center</li>
+    <li>Recibelo opera sábados, domingos y feriados, con cobertura completa</li>
+    <li>Logistica inversa unificada: devoluciones coordinadas por el mismo equipo</li>
+  </ul>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Tu configuración en Seller Center se mantiene</strong>Al cambiar de courier, tu cuota diaria, horarios, tallas logísticas y zonas de envio quedan igual. Solo cambia el operador. No tienes que reconfigurar nada mas.</div>
+  </div>
+  <div class="sec-lbl">Beneficios economicos inmediatos</div>
+  <table class="stbl">
+    <thead><tr><th>Tu calificación</th><th>Descuento en tarifa Recibelo</th></tr></thead>
+    <tbody>
+      <tr class="hi"><td><span class="stars">★★★★★</span> 5 estrellas</td><td>Hasta 50% ahorro vs. tarifa estándar</td></tr>
+      <tr class="hi"><td><span class="stars">★★★★</span> 4 estrellas</td><td>Hasta 40% ahorro vs. tarifa estándar</td></tr>
+      <tr><td><span class="stars">★★★</span> 3 estrellas</td><td>Hasta 25% ahorro vs. tarifa estándar</td></tr>
+    </tbody>
+  </table>
+  `
+},
+{
+  tag:'Paso 2 de 3',
+  icon:'',
+  title:'Que cambia en tu operación',
+  sub:'La migración es un cambio de operador, no un cambio de modelo. Tu flujo diario sigue siendo el mismo: Seller Center, etiquetas, picking, FPLUS. Solo cambia quien recoge.',
+  html:`
+  <div class="sec-lbl">Lo que CAMBIA</div>
+  <ul class="cklist">
+    <li>El courier que retira en tu bodega pasa a ser Recibelo</li>
+    <li>Tu token API se actualiza (Recibelo lo gestióna, no tienes que hacer nada tecnico)</li>
+    <li>Tus contactos de soporte operaciónal seran el equipo Recibelo Falabella Directo</li>
+  </ul>
+  <div class="sep"></div>
+  <div class="sec-lbl">Lo que NO cambia</div>
+  <ul class="cklist">
+    <li>Tu cuenta y acceso a Seller Center, todo igual</li>
+    <li>Tu calificación FPLUS, sigue corriendo normalmente</li>
+    <li>Los estados que ves en Seller Center, mismo flujo</li>
+    <li>Tu configuración de cuota, horarios y tallas logísticas</li>
+    <li>La experiencia del cliente final, mismas notificaciones, mismo seguimiento</li>
+  </ul>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Recibelo coordina toda la transición</strong>El equipo Recibelo se encarga de: notificación al equipo Falabella, transferencia de configuración, actualización de API, y agendamiento del primer picking. No tienes que gestiónar la migración técnica tu solo.</div>
+  </div>
+  <div class="sec-lbl">Tiempo estimado de transición</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Cambio en Seller Center</div><div class="mc-d">Inmediato, es un cambio de operador en tu perfil.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Configuración API</div><div class="mc-d">24-48 horas hábiles, Recibelo activa el token.</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Primer picking</div><div class="mc-d">Al dia siguiente de confirmada la activación.</div></div>
+  </div>
+  `
+},
+{
+  tag:'Paso 3 de 3',
+  icon:'',
+  title:'Como iniciar el cambio ahora',
+  sub:'El proceso de migración en Seller Center es corto. Recibelo coordina el resto. Sigue estos 6 pasos.',
+  html:`
+  <ul class="cklist num">
+    <li><span>Ingresa a Seller Center y ve a "Mi Cuenta"</span></li>
+    <li><span>Selecciona "Envios y Capacidad"</span></li>
+    <li><span>Accede al Modelo Directo ya existente</span></li>
+    <li class="hi"><span>Selecciona la opcion de cambiar operador del modelo a Recibelo</span></li>
+    <li><span>IMPORTANTE: Comunícate con tu ejecutivo Recibelo o Head de Growth para apoyar la correcta migración</span></li>
+    <li><span>Recibelo coordina la transición: notificación de clientes activos, transferencia de datos, configuración API</span></li>
+  </ul>
+  <div class="alert alert-g">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Tu ejecutivo Recibelo te acompaña en cada paso</strong>No hagas el cambio sin coordinar con tu ejecutivo primero. El equipo asegura que no haya pedidos en transito sin asignar durante el cambio de operador.</div>
+  </div>
+  <div class="sep"></div>
+  <div class="sec-lbl">Equipo especializado que te acompaña</div>
+  <div class="cards3">
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Sergio Diaz</div><div class="mc-d">Leader Sellers y Couriers Modelo Directo</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Karen Tobar</div><div class="mc-d">Support Leader Sellers y Couriers</div></div>
+    <div class="mc"><div class="mc-ico"></div><div class="mc-t">Antonia Cuadra</div><div class="mc-d">Leader Integracion Modelo Directo</div></div>
+  </div>
+  <div class="alert alert-p">
+    <div class="alert-ico"></div>
+    <div class="alert-body"><strong>Ya tienes todo lo que necesitas</strong>Contacta a tu ejecutivo Recibelo, coordina la fecha de migración, y en menos de 48 horas estarás operando con Recibelo en Falabella Directo.</div>
+  </div>
+  `
+}
+];
+
+// ─── WIZARD STATE ──────────────────────────────────────────────────────────
+
+let currentWizard = 'nuevo';
+let currentStep   = 0;
+
+function getSteps() {
+  return currentWizard === 'nuevo' ? STEPS_NUEVO : STEPS_CAMBIO;
+}
+
+function switchWizard(w) {
+  currentWizard = w;
+  currentStep   = 0;
+  document.getElementById('tab-nuevo').classList.toggle('active', w === 'nuevo');
+  document.getElementById('tab-cambio').classList.toggle('active', w === 'cambio');
+  render();
+}
+
+function changeStep(dir) {
+  const steps = getSteps();
+  const next  = currentStep + dir;
+  if (next < 0 || next >= steps.length) return;
+  currentStep = next;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function goToStep(i) {
+  currentStep = i;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function render() {
+  const steps = getSteps();
+  const step  = steps[currentStep];
+  const total = steps.length;
+  const pct   = Math.round(((currentStep + 1) / total) * 100);
+
+  // Progress
+  document.getElementById('prog-fill').style.width = pct + '%';
+  document.getElementById('prog-lbl').textContent  = 'Paso ' + (currentStep + 1) + ' de ' + total;
+
+  // Sidebar
+  const names_nuevo = [
+    'Que es Falabella Directo','El modelo dia a dia','La regla de 1 hora',
+    'FPLUS y beneficios','API y Tecnología','Activación en Seller Center'
+  ];
+  const names_cambio = ['Por que migrar','Que cambia','Como iniciar'];
+  const names = currentWizard === 'nuevo' ? names_nuevo : names_cambio;
+  document.getElementById('sidebar').innerHTML =
+    '<div class="sidebar-ttl">' + (currentWizard === 'nuevo' ? 'Nuevo seller' : 'Cambio de courier') + '</div>' +
+    names.map((n, i) => {
+      const cls = i < currentStep ? 'snav done' : i === currentStep ? 'snav active' : 'snav';
+      const num = i < currentStep ? '' : (i + 1);
+      return '<div class="' + cls + '" onclick="goToStep(' + i + ')"><div class="snum">' + num + '</div><div class="slabel">' + n + '</div></div>';
+    }).join('');
+
+  // Step content
+  document.getElementById('step-area').innerHTML =
+    '<div class="scard"><span class="sico">' + step.icon + '</span><span class="stag">' + step.tag + '</span>' +
+    '<h2 class="stitle">' + step.title + '</h2><p class="ssub">' + step.sub + '</p>' +
+    step.html + '</div>';
+
+  // Nav
+  document.getElementById('btn-prev').disabled  = currentStep === 0;
+  document.getElementById('btn-next').disabled  = currentStep === total - 1;
+  document.getElementById('nav-info').textContent = (currentStep + 1) + ' / ' + total;
+
+  if (currentStep === total - 1) {
+    document.getElementById('btn-next').textContent = 'Finalizado';
+    document.getElementById('btn-next').style.background = 'var(--purple)';
+  } else {
+    document.getElementById('btn-next').textContent = 'Siguiente';
+    document.getElementById('btn-next').style.background = 'var(--green)';
+  }
+}
+
+render();
+</script>
+</body>
+</html>
